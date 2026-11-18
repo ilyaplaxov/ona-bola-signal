@@ -1,5 +1,31 @@
 import { z } from "zod";
 import { Alert, AlertStatus } from "./alert";
+import {
+  AnalyzeDocumentRequest,
+  AnalyzeDocumentResponse,
+  Attachment,
+  AttachmentListResponse,
+} from "./attachment";
+import { DemoAccountsResponse, LoginRequest, SessionResponse } from "./auth";
+import { DimedStatusResponse } from "./dimed";
+import {
+  HandleSignalRequest,
+  PatientSignal,
+  RedeemSignalCodeRequest,
+  RedeemSignalCodeResponse,
+  SendSignalRequest,
+  SendSignalResponse,
+  SignalListQuery,
+  SignalListResponse,
+  SignalLinkResponse,
+} from "./patient-signal";
+import {
+  CreateReferralRequest,
+  Referral,
+  ReferralActionRequest,
+  ReferralListQuery,
+  ReferralListResponse,
+} from "./referral";
 import { RiskAssessment } from "./assessment";
 import { AuditEntityType, AuditEvent } from "./audit";
 import { IsoDate, IsoDateTime, Language, Uuid } from "./common";
@@ -10,7 +36,10 @@ import { RuleSetInfo } from "./ruleset";
 import { User } from "./user";
 import { ElevatedZone, RiskZone, ZoneFilter } from "./zones";
 
-/** Header carrying the acting demo user's id, set by the role switcher. Real authentication replaces it later. */
+/**
+ * Header carrying the acting demo user's id. Superseded by the session cookie (SESSION_COOKIE);
+ * the server accepts it only when DEMO_ACTOR_HEADER_ENABLED is on (tests, old e2e).
+ */
 export const DEMO_ACTOR_HEADER = "x-demo-user-id";
 
 const Count = z.number().int().nonnegative();
@@ -22,6 +51,8 @@ export const ErrorCode = z.enum([
   "NOT_FOUND",
   "CONFLICT",
   "ACTOR_REQUIRED",
+  /** Wrong username or password (401). */
+  "INVALID_CREDENTIALS",
   "FORBIDDEN",
   "AI_UNAVAILABLE",
   "INTERNAL",
@@ -58,6 +89,10 @@ export const DashboardStats = z.object({
   zoneCounts: z.object({ GREEN: Count, YELLOW: Count, RED: Count, NOT_ASSESSED: Count }),
   pendingAlerts: z.object({ total: Count, YELLOW: Count, RED: Count }),
   recentActivity: z.array(AuditEvent),
+  /** Patient signals still NEW, and how many of them are past the escalation time. */
+  newSignals: z.object({ total: Count, escalated: Count }).optional(),
+  /** Referrals waiting for the signed-in consultant (status SENT, addressed to them or their specialty). */
+  incomingReferrals: Count.optional(),
   /** Zone counts and pending alerts per district, for the district overview. Sorted by name. */
   districts: z
     .array(
@@ -75,6 +110,8 @@ export type DashboardStats = z.infer<typeof DashboardStats>;
 
 export const PatientListQuery = z.object({
   q: z.string().trim().min(1).max(100).optional(),
+  /** "me": only patients assigned to the signed-in user ("My patients"). */
+  assigned: z.literal("me").optional(),
   zone: ZoneFilter.optional(),
   district: z.string().trim().min(1).max(80).optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -270,7 +307,7 @@ export type AiChatResponse = z.infer<typeof AiChatResponse>;
 
 // ---------- Endpoint catalogue: the single list of routes both sides build against ----------
 
-export type HttpMethod = "GET" | "POST" | "PATCH";
+export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 export interface EndpointDef {
   method: HttpMethod;
@@ -281,8 +318,20 @@ export interface EndpointDef {
   response: z.ZodType;
 }
 
+/** Plain acknowledgement for actions with nothing to return. */
+export const OkResponse = z.object({ ok: z.literal(true) });
+export type OkResponse = z.infer<typeof OkResponse>;
+
 export const endpoints = {
   health: { method: "GET", path: "/api/health", response: HealthResponse },
+
+  // Auth: the session is an httpOnly cookie (SESSION_COOKIE).
+  login: { method: "POST", path: "/api/auth/login", body: LoginRequest, response: SessionResponse },
+  logout: { method: "POST", path: "/api/auth/logout", response: OkResponse },
+  /** 401 ACTOR_REQUIRED when nobody is signed in. */
+  me: { method: "GET", path: "/api/auth/me", response: SessionResponse },
+  demoAccounts: { method: "GET", path: "/api/auth/demo-accounts", response: DemoAccountsResponse },
+
   dashboardStats: { method: "GET", path: "/api/dashboard/stats", response: DashboardStats },
   listPatients: {
     method: "GET",
@@ -349,6 +398,92 @@ export const endpoints = {
     body: AiChatRequest,
     response: AiChatResponse,
   },
+  // Referrals
+  createReferral: {
+    method: "POST",
+    path: "/api/patients/:id/referrals",
+    params: IdParams,
+    body: CreateReferralRequest,
+    response: Referral,
+  },
+  listReferrals: {
+    method: "GET",
+    path: "/api/referrals",
+    query: ReferralListQuery,
+    response: ReferralListResponse,
+  },
+  updateReferral: {
+    method: "PATCH",
+    path: "/api/referrals/:id",
+    params: IdParams,
+    body: ReferralActionRequest,
+    response: Referral,
+  },
+
+  // Attachments. Upload (multipart) is POST /api/patients/:id/attachments, see attachment.ts.
+  listAttachments: {
+    method: "GET",
+    path: "/api/patients/:id/attachments",
+    params: IdParams,
+    response: AttachmentListResponse,
+  },
+  getAttachment: {
+    method: "GET",
+    path: "/api/attachments/:id",
+    params: IdParams,
+    response: Attachment,
+  },
+  analyzeDocument: {
+    method: "POST",
+    path: "/api/attachments/:id/analyze",
+    params: IdParams,
+    body: AnalyzeDocumentRequest,
+    response: AnalyzeDocumentResponse,
+  },
+
+  // DIMED delivery status for one patient
+  dimedStatus: {
+    method: "GET",
+    path: "/api/patients/:id/dimed",
+    params: IdParams,
+    response: DimedStatusResponse,
+  },
+
+  // Patient signals: staff side
+  issueSignalLink: {
+    method: "POST",
+    path: "/api/patients/:id/signal-link",
+    params: IdParams,
+    response: SignalLinkResponse,
+  },
+  listSignals: {
+    method: "GET",
+    path: "/api/signals",
+    query: SignalListQuery,
+    response: SignalListResponse,
+  },
+  handleSignal: {
+    method: "PATCH",
+    path: "/api/signals/:id",
+    params: IdParams,
+    body: HandleSignalRequest,
+    response: PatientSignal,
+  },
+
+  // Patient signals: the patient's web page, no sign-in
+  redeemSignalCode: {
+    method: "POST",
+    path: "/api/public/signal/redeem",
+    body: RedeemSignalCodeRequest,
+    response: RedeemSignalCodeResponse,
+  },
+  sendSignal: {
+    method: "POST",
+    path: "/api/public/signal",
+    body: SendSignalRequest,
+    response: SendSignalResponse,
+  },
+
   listAlerts: {
     method: "GET",
     path: "/api/alerts",

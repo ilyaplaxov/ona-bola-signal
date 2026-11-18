@@ -241,3 +241,72 @@ describe("endpoint catalogue", () => {
     }
   });
 });
+
+// ---------- Contracts added on 18 Nov (auth, permissions, referrals, attachments, signals) ----------
+
+import {
+  AnalyzeDocumentResponse,
+  can,
+  patientScope,
+  ReferralActionRequest,
+  SignalKind,
+  SignalLinkCode,
+  signalInstruction,
+} from "../src";
+import { ALARM_SIGNS } from "../../data-pack/protocol-data";
+
+describe("access matrix", () => {
+  it("lets only doctors register patients and keeps managers read-only", () => {
+    expect(can("DOCTOR", "PATIENT_CREATE")).toBe(true);
+    expect(can("NURSE", "PATIENT_CREATE")).toBe(false);
+    expect(can("MANAGER", "VISIT_ADD")).toBe(false);
+    expect(can("SPECIALIST", "REFERRAL_RESPOND")).toBe(true);
+  });
+
+  it("scopes consultants to referrals and the alert recipient to the district", () => {
+    expect(patientScope({ role: "SPECIALIST", specialty: "ENDOCRINOLOGIST" })).toBe("REFERRALS");
+    expect(patientScope({ role: "SPECIALIST", specialty: null })).toBe("DISTRICT");
+    expect(patientScope({ role: "MANAGER" })).toBe("ALL");
+  });
+});
+
+describe("patient signals", () => {
+  it("uses the protocol's 13 alarm signs, with the same ids as the data pack", () => {
+    const protocol = ALARM_SIGNS.map((s) => s.id);
+    expect(protocol).toHaveLength(13);
+    for (const id of protocol) expect(SignalKind.options).toContain(id);
+    expect(SignalKind.options).toHaveLength(15);
+  });
+
+  it("tells the patient to seek care for alarm signs and to call 103 in labour", () => {
+    expect(signalInstruction("VAGINAL_BLEEDING")).toBe("SEEK_CARE_NOW");
+    expect(signalInstruction("LABOUR_ONSET")).toBe("LABOUR");
+    expect(signalInstruction("CALL_BACK")).toBe("DOCTOR_WILL_CALL");
+  });
+
+  it("normalises link codes and rejects look-alike characters", () => {
+    expect(SignalLinkCode.parse(" abcd2345 ")).toBe("ABCD2345");
+    expect(SignalLinkCode.safeParse("ABCD0O1I").success).toBe(false);
+  });
+});
+
+describe("referral actions", () => {
+  it("requires a conclusion text to conclude", () => {
+    expect(ReferralActionRequest.safeParse({ action: "CONCLUDE" }).success).toBe(false);
+    expect(
+      ReferralActionRequest.parse({ action: "CONCLUDE", conclusion: "Без патологии" }),
+    ).toMatchObject({ attachmentIds: [] });
+  });
+});
+
+describe("document analysis", () => {
+  it("carries an ultrasound dating suggestion", () => {
+    const r = AnalyzeDocumentResponse.parse({
+      draft: { measuredAt: null, measurements: [] },
+      dating: { method: "ULTRASOUND", scanDate: "2026-11-10", weeks: 22, days: 3 },
+      warnings: [],
+      model: "claude-haiku-5-5",
+    });
+    expect(r.dating?.method).toBe("ULTRASOUND");
+  });
+});

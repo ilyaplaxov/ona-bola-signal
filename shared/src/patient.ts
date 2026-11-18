@@ -2,6 +2,7 @@ import { z } from "zod";
 import { RiskAssessment } from "./assessment";
 import { IsoDate, IsoDateTime, Uuid } from "./common";
 import { DatingMethod } from "./pregnancy";
+import { SignalLinkState } from "./patient-signal";
 import { RiskFlag, RiskGroup } from "./risk-groups";
 import { UserRef } from "./user";
 import { RiskZone } from "./zones";
@@ -59,6 +60,10 @@ export const PatientDetail = PatientSummary.extend({
    */
   riskGroups: z.array(RiskGroup).nullable().optional(),
   currentAssessment: RiskAssessment.nullable(),
+  /** Whether the patient can signal through the Telegram bot or the web page. */
+  signalLink: SignalLinkState.optional(),
+  /** Open referrals (SENT or ACCEPTED). */
+  openReferralCount: z.number().int().nonnegative().optional(),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });

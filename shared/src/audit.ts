@@ -13,6 +13,19 @@ export const AuditAction = z.enum([
   "AI_NOTE_ANALYZED",
   "AI_EXPLANATION_GENERATED",
   "AI_CHAT_ANSWERED",
+  "USER_LOGGED_IN",
+  "USER_LOGIN_FAILED",
+  "USER_LOGGED_OUT",
+  "REFERRAL_CREATED",
+  "REFERRAL_UPDATED",
+  "ATTACHMENT_UPLOADED",
+  "AI_DOCUMENT_ANALYZED",
+  "SIGNAL_LINK_ISSUED",
+  "SIGNAL_LINKED",
+  "SIGNAL_RECEIVED",
+  "SIGNAL_HANDLED",
+  "DIMED_SENT",
+  "DIMED_FAILED",
 ]);
 export type AuditAction = z.infer<typeof AuditAction>;
 
@@ -22,6 +35,11 @@ export const AuditEntityType = z.enum([
   "RISK_ASSESSMENT",
   "ALERT",
   "RULE_SET",
+  "USER",
+  "REFERRAL",
+  "ATTACHMENT",
+  "PATIENT_SIGNAL",
+  "DIMED_OUTBOX",
 ]);
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
 
