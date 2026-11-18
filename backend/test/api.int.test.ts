@@ -21,6 +21,12 @@ import {
   ReferralListResponse,
   Attachment,
   AttachmentListResponse,
+  PatientSignal,
+  SendSignalResponse,
+  SignalLinkResponse,
+  SignalListResponse,
+  RedeemSignalCodeResponse,
+  SIGNAL_TEXTS,
   type NoteExtractionOutput,
 } from "@ona-bola/shared";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -49,6 +55,7 @@ import {
 } from "../src/scripts/seed-data";
 import { seedId } from "../src/scripts/seed-ids";
 import { seedDatabase } from "../src/scripts/seed";
+import { createBotHandler, type TelegramApi } from "../src/telegram/bot";
 
 // Runs against the separate test database (never the demo one). Skipped when it is not reachable,
 // for example when Docker is not running. Keep every database test in this one file: the suite
@@ -1232,6 +1239,224 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
         ).body,
       );
       expect(done.conclusionAttachmentIds).toEqual([file.id]);
+    });
+  });
+
+  describe("patient signals (web page, staff side, Telegram bot)", () => {
+    const as = (key: string) => ({ "x-demo-user-id": userId(key) });
+    const issue = async (actor = "nurse-chilonzor") =>
+      SignalLinkResponse.parse(
+        (await request(app).post(`/api/patients/${demoId}/signal-link`).set(as(actor))).body,
+      );
+    const redeem = (code: string) =>
+      request(app).post("/api/public/signal/redeem").send({ code, consent: true, language: "ru" });
+
+    it("links the web page with a one-time code and turns a button into a signal", async () => {
+      const link = await issue();
+      expect(link.code).toMatch(/^[A-HJKMNP-Z2-9]{8}$/);
+      expect(link.webPath).toBe(`/signal?code=${link.code}`);
+      expect(link.telegramUrl).toBeNull(); // no bot in tests
+
+      expect(
+        (await request(app).post("/api/public/signal/redeem").send({ code: link.code })).status,
+      ).toBe(400); // consent is required
+      const { token } = RedeemSignalCodeResponse.parse(
+        (await redeem(link.code.toLowerCase())).body,
+      );
+      expect((await redeem(link.code)).status).toBe(404); // one-time
+
+      const sent = await request(app)
+        .post("/api/public/signal")
+        .send({ token, kind: "VAGINAL_BLEEDING" });
+      expect(sent.status).toBe(200);
+      expect(SendSignalResponse.parse(sent.body).instruction).toBe("SEEK_CARE_NOW");
+      const labour = await request(app)
+        .post("/api/public/signal")
+        .send({ token, kind: "LABOUR_ONSET" });
+      expect(SendSignalResponse.parse(labour.body).instruction).toBe("LABOUR");
+
+      const list = SignalListResponse.parse(
+        (await request(app).get("/api/signals?status=NEW").set(as("doctor-chilonzor"))).body,
+      );
+      const bleeding = list.items.find((x) => x.kind === "VAGINAL_BLEEDING")!;
+      expect(bleeding).toMatchObject({ channel: "WEB", status: "NEW", escalated: false });
+      expect(bleeding.patientReference).toBe(DEMO_PATIENT_REF);
+
+      // Another district does not see it; the dashboard counts it.
+      const other = SignalListResponse.parse(
+        (await request(app).get("/api/signals").set(as("doctor-yunusobod"))).body,
+      );
+      expect(other.items.find((x) => x.id === bleeding.id)).toBeUndefined();
+      const stats = DashboardStats.parse(
+        (await request(app).get("/api/dashboard/stats").set(as("doctor-chilonzor"))).body,
+      );
+      expect(stats.newSignals?.total).toBeGreaterThanOrEqual(2);
+
+      const patient = PatientDetail.parse((await request(app).get(`/api/patients/${demoId}`)).body);
+      expect(patient.signalLink).toMatchObject({ web: true, telegram: false });
+
+      const handled = await request(app)
+        .patch(`/api/signals/${bleeding.id}`)
+        .set(as("nurse-chilonzor"))
+        .send({ status: "CONTACTED" });
+      expect(PatientSignal.parse(handled.body)).toMatchObject({
+        status: "CONTACTED",
+        handledBy: { id: userId("nurse-chilonzor") },
+      });
+      expect(
+        (
+          await request(app)
+            .patch(`/api/signals/${bleeding.id}`)
+            .set(as("manager"))
+            .send({ status: "CALLED_IN" })
+        ).status,
+      ).toBe(403);
+    });
+
+    it("escalates a signal nobody handled within 30 minutes", async () => {
+      const later = createApp({
+        pingDb: () => pingDatabase(pool),
+        db,
+        ruleSet: DEMO_RULE_SET,
+        clock: () => new Date(NOW.getTime() + 31 * 60_000),
+      });
+      const list = SignalListResponse.parse(
+        (await request(later).get("/api/signals?status=NEW").set(as("manager"))).body,
+      );
+      expect(list.items.find((x) => x.kind === "LABOUR_ONSET")?.escalated).toBe(true);
+    });
+
+    it("refuses unknown tokens, repeats and floods", async () => {
+      expect(
+        (
+          await request(app)
+            .post("/api/public/signal")
+            .send({ token: "x".repeat(43), kind: "FEVER_38" })
+        ).status,
+      ).toBe(401);
+      const { token } = RedeemSignalCodeResponse.parse((await redeem((await issue()).code)).body);
+      const press = (kind: string) => request(app).post("/api/public/signal").send({ token, kind });
+      await press("FEVER_38");
+      await press("FEVER_38"); // same button within 5 minutes: one signal
+      const before = SignalListResponse.parse(
+        (await request(app).get(`/api/signals?patientId=${demoId}`).set(as("manager"))).body,
+      ).items.filter((x) => x.kind === "FEVER_38");
+      expect(before).toHaveLength(1);
+      const kinds = [
+        "DYSURIA",
+        "VAGINAL_ITCH",
+        "SUDDEN_EDEMA",
+        "ABDOMINAL_PAIN",
+        "CONTRACTIONS",
+        "ABDOMINAL_TRAUMA",
+        "AMNIOTIC_LEAK",
+        "WATERY_DISCHARGE",
+        "HEADACHE_VISION",
+      ];
+      const statuses = [];
+      for (const k of kinds) statuses.push((await press(k)).status);
+      expect(statuses.every((x) => x === 200)).toBe(true); // 10 signals in the hour
+      expect(ApiErrorBody.parse((await press("CALL_BACK")).body).error.code).toBe("RATE_LIMITED");
+    });
+
+    it("lets only nurses and doctors issue codes", async () => {
+      expect(
+        (await request(app).post(`/api/patients/${demoId}/signal-link`).set(as("manager"))).status,
+      ).toBe(403);
+      expect(
+        (await request(app).post(`/api/patients/${demoId}/signal-link`).set(as("doctor-yunusobod")))
+          .status,
+      ).toBe(403);
+    });
+
+    it("runs the Telegram flow: consent, link, signal, language", async () => {
+      const calls: { method: string; body: Record<string, unknown> }[] = [];
+      const api: TelegramApi = {
+        async call<T>(method: string, body: Record<string, unknown> = {}) {
+          calls.push({ method, body });
+          return {} as T;
+        },
+      };
+      const handle = createBotHandler({ db, api, clock: () => NOW });
+      const chat = { id: 777001, type: "private" };
+      const texts = () =>
+        calls.filter((c) => c.method === "sendMessage").map((c) => String(c.body.text));
+      const { code } = await issue("doctor-chilonzor");
+
+      await handle({
+        update_id: 1,
+        message: { chat, from: { language_code: "ru" }, text: "hello" },
+      });
+      expect(texts().at(-1)).toBe(SIGNAL_TEXTS.ru.notLinked);
+
+      await handle({
+        update_id: 2,
+        message: { chat, from: { language_code: "ru" }, text: `/start ${code}` },
+      });
+      expect(texts().at(-1)).toBe(SIGNAL_TEXTS.ru.consent);
+      // Not linked until she agrees.
+      let patient = PatientDetail.parse((await request(app).get(`/api/patients/${demoId}`)).body);
+      expect(patient.signalLink?.telegram).toBe(false);
+
+      await handle({
+        update_id: 3,
+        callback_query: {
+          id: "cb1",
+          from: { language_code: "ru" },
+          message: { chat },
+          data: `agree:${code}`,
+        },
+      });
+      expect(texts().slice(-2)).toEqual([SIGNAL_TEXTS.ru.linked, SIGNAL_TEXTS.ru.menu]);
+      patient = PatientDetail.parse((await request(app).get(`/api/patients/${demoId}`)).body);
+      expect(patient.signalLink?.telegram).toBe(true);
+
+      await handle({
+        update_id: 4,
+        callback_query: {
+          id: "cb2",
+          from: {},
+          message: { chat },
+          data: "sig:FETAL_MOVEMENT_CHANGE",
+        },
+      });
+      expect(texts().at(-1)).toContain(SIGNAL_TEXTS.ru.instructions.SEEK_CARE_NOW);
+      expect(texts().at(-1)).toContain("103");
+
+      await handle({
+        update_id: 5,
+        callback_query: { id: "cb3", from: {}, message: { chat }, data: "lang:uz" },
+      });
+      expect(texts().at(-1)).toBe(SIGNAL_TEXTS.uz.menu);
+
+      const signals = SignalListResponse.parse(
+        (await request(app).get(`/api/signals?patientId=${demoId}`).set(as("doctor-chilonzor")))
+          .body,
+      );
+      expect(signals.items.find((x) => x.kind === "FETAL_MOVEMENT_CHANGE")?.channel).toBe(
+        "TELEGRAM",
+      );
+
+      // A used code does not link another chat; group chats are ignored.
+      await handle({
+        update_id: 6,
+        callback_query: {
+          id: "cb4",
+          from: {},
+          message: { chat: { id: 777002, type: "private" } },
+          data: `agree:${code}`,
+        },
+      });
+      expect(texts().at(-1)).toBe(SIGNAL_TEXTS.uz.badCode);
+      const before = calls.length;
+      await handle({ update_id: 7, message: { chat: { id: -5, type: "group" }, text: "/start" } });
+      expect(calls.length).toBe(before);
+
+      // The audit log names the kind and channel, nothing about the chat.
+      const audit = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?patientId=${demoId}&entityType=PATIENT_SIGNAL`)).body,
+      );
+      expect(JSON.stringify(audit.items)).not.toContain("777001");
     });
   });
 });

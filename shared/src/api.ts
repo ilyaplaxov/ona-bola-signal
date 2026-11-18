@@ -55,6 +55,8 @@ export const ErrorCode = z.enum([
   "INVALID_CREDENTIALS",
   "FORBIDDEN",
   "AI_UNAVAILABLE",
+  /** Too many attempts from one place (429); wait and try again. */
+  "RATE_LIMITED",
   "INTERNAL",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;

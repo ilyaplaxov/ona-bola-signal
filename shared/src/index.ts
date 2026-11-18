@@ -17,4 +17,5 @@ export * from "./referral";
 export * from "./dimed";
 export * from "./attachment";
 export * from "./patient-signal";
+export * from "./patient-signal-texts";
 export * from "./api";

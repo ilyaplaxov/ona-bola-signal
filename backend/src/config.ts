@@ -38,6 +38,8 @@ const EnvSchema = z.object({
    * Accept the old x-demo-user-id header besides the session cookie. Default: on, except in
    * production. Turn off once the frontend signs in through the login page.
    */
+  /** Telegram bot token from @BotFather. Without it the bot stays off; the /signal page still works. */
+  TELEGRAM_BOT_TOKEN: z.preprocess(emptyToUndefined, z.string().min(20).optional()),
   AUTH_DEMO_HEADER: z.preprocess(emptyToUndefined, z.stringbool().optional()),
   /** List the seeded demo accounts and their password on the login page. Default: on, except in production. */
   DEMO_ACCOUNTS: z.preprocess(emptyToUndefined, z.stringbool().optional()),

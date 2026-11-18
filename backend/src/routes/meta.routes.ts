@@ -15,6 +15,7 @@ import type { ActorContext } from "../services/auth.service";
 import { toRuleSetInfo, type RuleSet } from "../risk-engine";
 import { listAudit, type AuditScope } from "../services/audit.service";
 import { countIncoming } from "../services/referral.service";
+import { countNewSignals } from "../services/signal.service";
 import { getDashboardStats, listUsers } from "../services/dashboard.service";
 
 /** What a user sees in feeds: events about patients they may see, and their own actions. */
@@ -25,7 +26,7 @@ function auditScope(actor: ActorContext | null): AuditScope | undefined {
 }
 
 /** Dashboard, demo users, audit trail and the active rule set. */
-export function metaRouter(deps: { db: Database; ruleSet: RuleSet }): Router {
+export function metaRouter(deps: { db: Database; ruleSet: RuleSet; clock: () => Date }): Router {
   const router = Router();
   const ruleSetInfo = toRuleSetInfo(deps.ruleSet);
 
@@ -34,7 +35,8 @@ export function metaRouter(deps: { db: Database; ruleSet: RuleSet }): Router {
     const stats = await getDashboardStats(deps.db, auditScope(actor));
     const incomingReferrals =
       actor?.role === "SPECIALIST" ? await countIncoming(deps.db, actor) : undefined;
-    sendJson(res, DashboardStats, { ...stats, incomingReferrals });
+    const newSignals = await countNewSignals(deps.db, visiblePatients(actor), deps.clock());
+    sendJson(res, DashboardStats, { ...stats, incomingReferrals, newSignals });
   });
 
   router.get("/users", async (_req, res) => {

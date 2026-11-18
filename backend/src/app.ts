@@ -13,6 +13,7 @@ import { metaRouter } from "./routes/meta.routes";
 import { patientsRouter } from "./routes/patients.routes";
 import { referralsRouter } from "./routes/referrals.routes";
 import { attachmentsRouter } from "./routes/attachments.routes";
+import { publicSignalRouter, signalsRouter } from "./routes/signals.routes";
 import { assertAttachmentsOfPatient } from "./services/attachment.service";
 import { DEMO_PASSWORD } from "./scripts/seed-data";
 import { DEFAULT_UPLOADS_DIR } from "./config";
@@ -27,6 +28,8 @@ export interface AppDeps {
   clock?: () => Date;
   /** Claude features; null or absent when AI_ENABLED is off. Tests pass a fake. */
   ai?: AiService | null;
+  /** The Telegram bot's @username once known; absent or null without a bot. */
+  botUsername?: () => string | null;
   /** Where uploaded files are stored. Tests pass a temporary folder. */
   uploadsDir?: string;
   /** Sign-in settings. Defaults (for tests): demo header accepted, demo accounts listed, plain cookies. */
@@ -57,11 +60,14 @@ export function createApp(deps: AppDeps): express.Express {
       },
     }),
   );
+  // The patient's own page: no staff sign-in, so it is mounted before the gate.
+  app.use("/api", publicSignalRouter({ db: deps.db, clock }));
+
   // Without the legacy demo header, everything below needs a signed-in user, except the rule set
   // (no patient data) and the patient's own signal page (/api/public/*).
   if (!(deps.auth?.allowDemoHeader ?? true)) {
     app.use("/api", (req, res, next) => {
-      const open = req.path === "/ruleset" || req.path.startsWith("/public/");
+      const open = req.path === "/ruleset";
       if (!open && !getActorContext(res)) {
         throw new HttpError(401, "ACTOR_REQUIRED", "Sign in first");
       }
@@ -69,12 +75,16 @@ export function createApp(deps: AppDeps): express.Express {
     });
   }
   app.use("/api", patientsRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
-  app.use("/api", metaRouter({ db: deps.db, ruleSet: deps.ruleSet }));
+  app.use("/api", metaRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", workflowRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", aiRouter({ db: deps.db, ai, clock }));
   app.use(
     "/api",
     referralsRouter({ db: deps.db, clock, checkAttachments: assertAttachmentsOfPatient }),
+  );
+  app.use(
+    "/api",
+    signalsRouter({ db: deps.db, clock, botUsername: deps.botUsername ?? (() => null) }),
   );
   app.use(
     "/api",

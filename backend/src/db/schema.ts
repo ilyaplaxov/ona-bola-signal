@@ -2,6 +2,10 @@ import type {
   AssessmentReason,
   AttachmentContentType,
   AttachmentKind,
+  Language,
+  SignalChannel,
+  SignalKind,
+  SignalStatus,
   DataWarning,
   RiskFactors,
   ReferralStatus,
@@ -270,4 +274,70 @@ export const attachments = pgTable(
     uploadedAt: createdAt(),
   },
   (t) => [index("attachments_patient_idx").on(t.patientId, t.uploadedAt)],
+);
+
+/** One-time codes a clinician gives a patient to link the bot or the web page. Only a hash is stored. */
+export const signalLinkCodes = pgTable(
+  "signal_link_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull().unique(),
+    issuedBy: uuid("issued_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+  },
+  (t) => [index("signal_link_codes_patient_idx").on(t.patientId)],
+);
+
+/**
+ * A patient's linked device: a Telegram chat or a web-page token (hash only). Revoked when the
+ * same chat links another patient. Holds no name or phone number.
+ */
+export const signalBindings = pgTable(
+  "signal_bindings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    channel: text("channel").$type<SignalChannel>().notNull(),
+    telegramChatId: text("telegram_chat_id"),
+    webTokenHash: text("web_token_hash").unique(),
+    language: text("language").$type<Language>().notNull(),
+    consentedAt: timestamp("consented_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("signal_bindings_patient_idx").on(t.patientId),
+    index("signal_bindings_chat_idx").on(t.telegramChatId),
+  ],
+);
+
+/** Signals sent by patients. Buttons only: there is no free text to store. */
+export const patientSignals = pgTable(
+  "patient_signals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    bindingId: uuid("binding_id").references(() => signalBindings.id, { onDelete: "set null" }),
+    kind: text("kind").$type<SignalKind>().notNull(),
+    channel: text("channel").$type<SignalChannel>().notNull(),
+    status: text("status").$type<SignalStatus>().notNull(),
+    createdAt: createdAt(),
+    handledBy: uuid("handled_by").references(() => users.id),
+    handledAt: timestamp("handled_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("patient_signals_status_idx").on(t.status, t.createdAt),
+    index("patient_signals_patient_idx").on(t.patientId),
+  ],
 );
