@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 520" width="500" height="520">
+  <!-- Alpha mask for womb-final.jpg (a crop of the design reference).
+       A feathered, tilted ellipse keeps the womb; two soft holes remove the "Risk status" and
+       "Fetal heart rate" cards that are baked into the reference, because live cards float there. -->
+  <defs>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="11" />
+    </filter>
+    <filter id="hole" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" />
+    </filter>
+    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="500" height="520">
+      <rect width="500" height="520" fill="#fff" />
+      <rect x="-40" y="56" width="180" height="94" rx="22" fill="#000" filter="url(#hole)" />
+      <rect x="436" y="282" width="80" height="134" rx="22" fill="#000" filter="url(#hole)" />
+    </mask>
+  </defs>
+  <g mask="url(#cut)">
+    <ellipse
+      cx="258"
+      cy="250"
+      rx="205"
+      ry="236"
+      fill="#fff"
+      filter="url(#soft)"
+      transform="rotate(28 258 250)"
+    />
+  </g>
+</svg>

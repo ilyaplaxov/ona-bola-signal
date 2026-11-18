@@ -36,7 +36,7 @@ npm run db:reset   # миграции + демо-данные (24 пациент
 npm run dev        # сайт: http://localhost:5173, API: http://localhost:3001
 ```
 
-Откройте http://localhost:5173 и выберите роль в правом верхнем углу. Сценарий демо — в [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md).
+Откройте http://localhost:5173/dashboard и выберите роль в правом верхнем углу (на http://localhost:5173 — публичная главная страница, кнопка «Doctor portal» ведёт сюда). Сценарий демо — в [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md).
 
 Проверить весь сценарий одной командой (Chrome, около 15 секунд, база сбрасывается до и после, скриншоты в `docs/demo/`):
 
@@ -108,9 +108,9 @@ ona-bola-signal/
 │  │  └─ scripts/          seed-data.ts (демо-данные), seed.ts, reset.ts, seed-ids.ts
 │  └─ test/                risk-engine, alert-policy, api.int (база), health, config, ai-contract, note-draft, claude.service
 ├─ frontend/src/
-│  ├─ main.tsx             маршруты: /, /patients, /patients/:id, /alerts, /rules
+│  ├─ main.tsx             маршруты: / (публичная главная, без Layout), /dashboard, /patients, /patients/:id, /alerts, /rules
 │  ├─ app/                 Layout (меню, баннер, роль, язык), session (роль и язык в localStorage)
-│  ├─ pages/               DashboardPage, PatientsPage, PatientDetailsPage, AlertsPage, RulesPage
+│  ├─ pages/               DashboardPage, PatientsPage, PatientDetailsPage, AlertsPage, RulesPage; home/ — публичная главная (анимация недель 8–40)
 │  ├─ components/          ZoneBadge, RiskExplanation, MeasurementForm, MeasurementHistory, TrendChart, AlertList,
 │  │                       RegisterPatientForm, AiNotePanel, AiExplanation, AiBadge
 │  ├─ i18n/                strings.ts (узбекский, русский, английский; подписи правил), format.ts (даты, значения)

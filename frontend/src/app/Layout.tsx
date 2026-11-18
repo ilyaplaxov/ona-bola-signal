@@ -19,7 +19,7 @@ export function Layout() {
   }, [users.data, actorId, setActorId]);
 
   const links: [string, string][] = [
-    ["/", s.nav.dashboard],
+    ["/dashboard", s.nav.dashboard],
     ["/patients", s.nav.patients],
     ["/alerts", s.nav.alerts],
     ["/rules", s.nav.rules],
@@ -34,7 +34,7 @@ export function Layout() {
       </div>
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-          <Link to="/" className="text-lg font-bold tracking-tight text-rose-800">
+          <Link to="/dashboard" className="text-lg font-bold tracking-tight text-rose-800">
             Ona-Bola Signal
           </Link>
           <nav className="flex flex-wrap gap-1 text-sm">
@@ -42,7 +42,7 @@ export function Layout() {
               <NavLink
                 key={to}
                 to={to}
-                end={to === "/"}
+                end={to === "/dashboard"}
                 className={({ isActive }) =>
                   `flex items-center gap-1.5 rounded-md px-3 py-1.5 ${
                     isActive

@@ -38,7 +38,7 @@ test.afterAll(() => resetDemoData());
 test("a nurse's visit turns the zone red and the specialist acknowledges the alert", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/dashboard");
   await actAs(page, "Nilufar Saidova");
   await expect(page.getByRole("heading", { name: "Umumiy holat" })).toBeVisible();
   await expect(page.getByText("Soʻnggi harakatlar")).toBeVisible();
@@ -116,15 +116,24 @@ test("a new synthetic patient can be registered and starts unassessed", async ({
   await expect(notRecorded).toHaveCount(0);
 });
 
-test("the interface switches to English", async ({ page }) => {
+test("the public home page opens and the doctor portal leads into the app", async ({ page }) => {
   await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: /Every pregnancy deserves a closer watch/ }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Doctor portal" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
+
+test("the interface switches to English", async ({ page }) => {
+  await page.goto("/dashboard");
   await page.getByRole("button", { name: "EN" }).click();
   await expect(page.getByRole("link", { name: "Registry" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 });
 
 test("the interface switches to Russian, dates included", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/dashboard");
   await page.getByRole("button", { name: "RU" }).click();
   await expect(page.getByRole("link", { name: "Реестр" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Обзор" })).toBeVisible();

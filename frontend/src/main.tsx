@@ -7,6 +7,7 @@ import { Layout } from "./app/Layout";
 import { SessionProvider, useStrings } from "./app/session";
 import { AlertsPage } from "./pages/AlertsPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { HomePage } from "./pages/home/HomePage";
 import { PatientDetailsPage } from "./pages/PatientDetailsPage";
 import { PatientsPage } from "./pages/PatientsPage";
 import { RulesPage } from "./pages/RulesPage";
@@ -21,7 +22,7 @@ function NotFound() {
   return (
     <p className="text-slate-600">
       {s.notFound}.{" "}
-      <Link to="/" className="text-rose-800 hover:underline">
+      <Link to="/dashboard" className="text-rose-800 hover:underline">
         {s.nav.dashboard}
       </Link>
     </p>
@@ -29,10 +30,12 @@ function NotFound() {
 }
 
 const router = createBrowserRouter([
+  // Public landing page: outside Layout, so no prototype banner and no API calls.
+  { path: "/", element: <HomePage /> },
   {
     element: <Layout />,
     children: [
-      { index: true, element: <DashboardPage /> },
+      { path: "dashboard", element: <DashboardPage /> },
       { path: "patients", element: <PatientsPage /> },
       { path: "patients/:id", element: <PatientDetailsPage /> },
       { path: "alerts", element: <AlertsPage /> },
