@@ -6,7 +6,7 @@ Perinatal high-risk registry for district healthcare teams: a registry of pregna
 
 ## Pitch deck
 
-**[`Ona-Bola_Signal_pitch.pptx`](Ona-Bola_Signal_pitch.pptx)**: 13 slides in Russian on the organisers' template, with speaker notes on most slides. The slides cover:
+**[`Ona-Bola_Signal_pitch.pptx`](Ona-Bola_Signal_pitch.pptx)**: 13 slides in Russian, following the organisers' template structure in the product's own look, with speaker notes on every slide. The slides cover:
 
 - the problem;
 - the market;
