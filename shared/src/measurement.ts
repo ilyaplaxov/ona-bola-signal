@@ -7,7 +7,7 @@ export type MeasurementType = z.infer<typeof MeasurementType>;
 
 /**
  * The one accepted unit per type. Readings in any other unit are rejected, never converted silently.
- * To be confirmed against local lab forms (docs/MENTOR_QUESTIONS.md, domain question 3).
+ * To be confirmed against local lab forms (docs/MENTOR_QUESTIONS.md, question Д5).
  */
 export const CANONICAL_UNITS = {
   BLOOD_PRESSURE: "mmHg",
