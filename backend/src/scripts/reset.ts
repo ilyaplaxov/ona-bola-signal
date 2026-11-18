@@ -1,6 +1,7 @@
 // npm run db:reset — applies migrations, wipes every table and loads the synthetic demo data.
 // Refuses to touch a database that is not on this machine unless --allow-remote is passed,
 // so a shared (for example Supabase) database is never wiped by accident.
+import { rm } from "node:fs/promises";
 import { loadConfig, loadEnvFile } from "../config";
 import { createDatabase } from "../db/client";
 import { runMigrations } from "../db/migrate";
@@ -26,6 +27,8 @@ const { pool, db } = createDatabase(config.DATABASE_URL);
 try {
   await runMigrations(db);
   await resetDatabase(db);
+  // Uploaded files belong to the rows just wiped.
+  await rm(config.UPLOADS_DIR, { recursive: true, force: true });
   const ruleSet = getRuleSet(config.RULE_SET);
   const summary = await seedDatabase(db, ruleSet, new Date());
   console.log(

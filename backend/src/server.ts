@@ -16,6 +16,7 @@ const app = createApp({
   db,
   ruleSet,
   ai,
+  uploadsDir: config.UPLOADS_DIR,
   auth: {
     allowDemoHeader: config.AUTH_DEMO_HEADER,
     secureCookies: config.NODE_ENV === "production",

@@ -14,3 +14,6 @@ coverage/
 # Playwright output (screenshots for the pitch live in docs/demo/)
 playwright-report/
 test-results/
+
+# Uploaded patient files (synthetic in the demo, still never in git)
+backend/uploads/

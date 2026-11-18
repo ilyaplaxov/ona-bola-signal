@@ -12,7 +12,10 @@ import { workflowRouter } from "./routes/measurements.routes";
 import { metaRouter } from "./routes/meta.routes";
 import { patientsRouter } from "./routes/patients.routes";
 import { referralsRouter } from "./routes/referrals.routes";
+import { attachmentsRouter } from "./routes/attachments.routes";
+import { assertAttachmentsOfPatient } from "./services/attachment.service";
 import { DEMO_PASSWORD } from "./scripts/seed-data";
+import { DEFAULT_UPLOADS_DIR } from "./config";
 
 export interface AppDeps {
   /** Resolves true when the database answers. Injected so tests can fake it. */
@@ -24,6 +27,8 @@ export interface AppDeps {
   clock?: () => Date;
   /** Claude features; null or absent when AI_ENABLED is off. Tests pass a fake. */
   ai?: AiService | null;
+  /** Where uploaded files are stored. Tests pass a temporary folder. */
+  uploadsDir?: string;
   /** Sign-in settings. Defaults (for tests): demo header accepted, demo accounts listed, plain cookies. */
   auth?: Partial<AuthRouteOptions> & { allowDemoHeader?: boolean };
 }
@@ -67,7 +72,18 @@ export function createApp(deps: AppDeps): express.Express {
   app.use("/api", metaRouter({ db: deps.db, ruleSet: deps.ruleSet }));
   app.use("/api", workflowRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", aiRouter({ db: deps.db, ai, clock }));
-  app.use("/api", referralsRouter({ db: deps.db, clock }));
+  app.use(
+    "/api",
+    referralsRouter({ db: deps.db, clock, checkAttachments: assertAttachmentsOfPatient }),
+  );
+  app.use(
+    "/api",
+    attachmentsRouter({
+      db: deps.db,
+      clock,
+      store: { dir: deps.uploadsDir ?? DEFAULT_UPLOADS_DIR },
+    }),
+  );
 
   app.use("/api", notFound);
   app.use(errorHandler);

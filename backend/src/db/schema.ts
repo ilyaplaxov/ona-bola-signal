@@ -1,5 +1,7 @@
 import type {
   AssessmentReason,
+  AttachmentContentType,
+  AttachmentKind,
   DataWarning,
   RiskFactors,
   ReferralStatus,
@@ -11,6 +13,7 @@ import {
   bigserial,
   date,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -243,4 +246,28 @@ export const referrals = pgTable(
     index("referrals_inbox_idx").on(t.toSpecialty, t.status),
     index("referrals_to_user_idx").on(t.toUserId),
   ],
+);
+
+/** Files attached to a patient. The bytes live on disk (UPLOADS_DIR) under storage_key, never the file name. */
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<AttachmentKind>().notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").$type<AttachmentContentType>().notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: text("sha256").notNull(),
+    storageKey: text("storage_key").notNull().unique(),
+    description: text("description"),
+    referralId: uuid("referral_id").references(() => referrals.id, { onDelete: "set null" }),
+    uploadedBy: uuid("uploaded_by")
+      .notNull()
+      .references(() => users.id),
+    uploadedAt: createdAt(),
+  },
+  (t) => [index("attachments_patient_idx").on(t.patientId, t.uploadedAt)],
 );

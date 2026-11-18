@@ -19,8 +19,13 @@ import {
   SESSION_COOKIE,
   Referral,
   ReferralListResponse,
+  Attachment,
+  AttachmentListResponse,
   type NoteExtractionOutput,
 } from "@ona-bola/shared";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
@@ -57,11 +62,13 @@ const reachable = await pingDatabase(pool);
 if (!reachable) await pool.end();
 
 describe.skipIf(!reachable)("API on the seeded test database", () => {
+  const uploadsDir = mkdtempSync(path.join(tmpdir(), "ona-uploads-"));
   const app = createApp({
     pingDb: () => pingDatabase(pool),
     db,
     ruleSet: DEMO_RULE_SET,
     clock: () => NOW,
+    uploadsDir,
   });
   const demoId = seedId(`patient:${DEMO_PATIENT_REF}`);
 
@@ -73,6 +80,7 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
 
   afterAll(async () => {
     await pool.end();
+    rmSync(uploadsDir, { recursive: true, force: true });
   });
 
   describe("GET /api/patients", () => {
@@ -1092,6 +1100,138 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       expect(out.items.length).toBeGreaterThanOrEqual(3);
       const patient = PatientDetail.parse((await request(app).get(`/api/patients/${demoId}`)).body);
       expect(patient.openReferralCount).toBe(1);
+    });
+  });
+
+  describe("patient files (attachments)", () => {
+    const as = (key: string) => ({ "x-demo-user-id": userId(key) });
+    const pdf = Buffer.from("%PDF-1.4\n% synthetic ultrasound report\n%%EOF\n");
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    const upload = (
+      file: Buffer,
+      name: string,
+      fields: Record<string, string>,
+      actor = "nurse-chilonzor",
+    ) => {
+      let req = request(app).post(`/api/patients/${demoId}/attachments`).set(as(actor));
+      for (const [k, v] of Object.entries(fields)) req = req.field(k, v);
+      return req.attach("file", file, name);
+    };
+
+    it("stores an ultrasound report, lists it and serves it back inline", async () => {
+      const res = await upload(pdf, "UZI 22 hafta (Sinov).pdf", {
+        kind: "ULTRASOUND",
+        description: "22 hafta",
+      });
+      expect(res.status).toBe(201);
+      const attachment = Attachment.parse(res.body);
+      expect(attachment).toMatchObject({
+        kind: "ULTRASOUND",
+        contentType: "application/pdf",
+        fileName: "UZI 22 hafta (Sinov).pdf",
+        sizeBytes: pdf.length,
+        uploadedBy: { id: userId("nurse-chilonzor") },
+      });
+
+      const list = AttachmentListResponse.parse(
+        (await request(app).get(`/api/patients/${demoId}/attachments`).set(as("doctor-chilonzor")))
+          .body,
+      );
+      expect(list.items[0]?.id).toBe(attachment.id);
+
+      const file = await request(app)
+        .get(`/api/attachments/${attachment.id}/file`)
+        .set(as("doctor-chilonzor"))
+        .buffer(true)
+        .parse((r, cb) => {
+          const chunks: Buffer[] = [];
+          r.on("data", (c: Buffer) => chunks.push(c));
+          r.on("end", () => cb(null, Buffer.concat(chunks)));
+        });
+      expect(file.status).toBe(200);
+      expect(file.headers["content-type"]).toBe("application/pdf");
+      expect(file.headers["content-disposition"]).toMatch(/^inline;/);
+      expect(file.headers["x-content-type-options"]).toBe("nosniff");
+      expect(Buffer.compare(file.body as Buffer, pdf)).toBe(0);
+
+      // Another district's doctor cannot read it; the audit has no file name.
+      expect(
+        (
+          await request(app)
+            .get(`/api/attachments/${attachment.id}/file`)
+            .set(as("doctor-yunusobod"))
+        ).status,
+      ).toBe(403);
+      const audit = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?entityType=ATTACHMENT&entityId=${attachment.id}`)).body,
+      );
+      expect(audit.items[0]?.metadata).toMatchObject({
+        kind: "ULTRASOUND",
+        contentType: "application/pdf",
+      });
+      expect(JSON.stringify(audit.items)).not.toContain("Sinov");
+    });
+
+    it("decides the type from the bytes, not the name", async () => {
+      const fake = await upload(Buffer.from("MZ executable"), "report.pdf", { kind: "OTHER" });
+      expect(fake.status).toBe(415);
+      const image = Attachment.parse(
+        (await upload(png, "photo.bin", { kind: "LAB_RESULTS" })).body,
+      );
+      expect(image.contentType).toBe("image/png");
+    });
+
+    it("rejects files over 10 MB, a missing file and the manager", async () => {
+      const big = Buffer.concat([pdf, Buffer.alloc(10 * 1024 * 1024)]);
+      expect((await upload(big, "big.pdf", { kind: "OTHER" })).status).toBe(413);
+      const none = await request(app)
+        .post(`/api/patients/${demoId}/attachments`)
+        .set(as("nurse-chilonzor"))
+        .field("kind", "OTHER");
+      expect(none.status).toBe(400);
+      expect((await upload(pdf, "m.pdf", { kind: "OTHER" }, "manager")).status).toBe(403);
+    });
+
+    it("attaches a consultant's conclusion file to the referral", async () => {
+      const r = Referral.parse(
+        (
+          await request(app)
+            .post(`/api/patients/${demoId}/referrals`)
+            .set(as("doctor-chilonzor"))
+            .send({ toSpecialty: "CARDIOLOGIST", reason: "AQB" })
+        ).body,
+      );
+      const file = Attachment.parse(
+        (
+          await upload(
+            pdf,
+            "EKG xulosa.pdf",
+            { kind: "SPECIALIST_CONCLUSION", referralId: r.id },
+            "cardiologist",
+          )
+        ).body,
+      );
+      expect(file.referralId).toBe(r.id);
+
+      const otherPatient = PatientListResponse.parse(
+        (await request(app).get("/api/patients?pageSize=100")).body,
+      ).items.find((p) => p.id !== demoId)!;
+      const wrong = await request(app)
+        .patch(`/api/referrals/${r.id}`)
+        .set(as("cardiologist"))
+        .send({ action: "CONCLUDE", conclusion: "Norma", attachmentIds: [seedId("not-a-file")] });
+      expect(wrong.status).toBe(400);
+      expect(otherPatient).toBeDefined();
+
+      const done = Referral.parse(
+        (
+          await request(app)
+            .patch(`/api/referrals/${r.id}`)
+            .set(as("cardiologist"))
+            .send({ action: "CONCLUDE", conclusion: "EKG: norma", attachmentIds: [file.id] })
+        ).body,
+      );
+      expect(done.conclusionAttachmentIds).toEqual([file.id]);
     });
   });
 });
