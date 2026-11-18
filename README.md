@@ -4,6 +4,41 @@ Perinatal high-risk registry for district healthcare teams: a registry of pregna
 
 > **Prototype.** Synthetic data only. Demo rules are illustrative and are not clinical guidance. The deterministic Risk Engine sets every zone; Claude only extracts, summarises and explains. A clinician stays responsible for every decision.
 
+## Pitch deck
+
+**[`Ona-Bola_Signal_pitch.pptx`](Ona-Bola_Signal_pitch.pptx)**: 13 slides in Russian on the organisers' template, with speaker notes on most slides. The slides cover:
+
+- the problem;
+- the market;
+- how it works, with screens of the product;
+- competitors;
+- the technology;
+- law and data;
+- the business model;
+- the plan;
+- the team.
+
+Prices and pilot figures in it are hypotheses to test in a pilot.
+
+## What it does
+
+- **Doctor's workspace.** Sign-in, a registry scoped to the doctor's district, and a patient card with the zone, the reasons and the protocol page for each.
+- **Visits and alerts.** A visit (blood pressure, haemoglobin, proteinuria, glucose) is assessed at once by the rules engine; a worsening zone alerts the specialist.
+- **Referrals** to consultants (endocrinologist, cardiologist and others), who answer with a conclusion and files.
+- **Documents.** Ultrasound and specialist reports, lab sheets and MRI files on the patient's record.
+- **Patient signal.** A pregnant woman reports one of the protocol's 13 alarm signs through the Telegram bot or the `/signal` page. She is told at once what to do, and her doctor sees the signal.
+- **Claude, in a bounded role.** It drafts the visit form from a note or a PDF report, explains an assessment and answers the doctor's questions. It never sets or changes a zone.
+- **DIMED.** Records are queued for the national system (a local stub until access is granted).
+- **Languages.** Uzbek, Russian and English.
+
+## Team
+
+- **Илья Плахов**: backend, AI and integrations.
+- **Kamoliddin Aminjonov**: frontend and design.
+- **Sunnat Begiyev**: security and research.
+
+All three study Software Engineering at INHA University in Tashkent.
+
 ## Quick start
 
 Requirements: Node 22.12 or newer (24 works), npm 10+, Docker Desktop running. Run every command from the repository folder, the one that holds this README.
