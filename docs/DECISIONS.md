@@ -2,6 +2,14 @@
 
 Short log of choices that shape the code, newest first. Add an entry whenever a decision is made or changed.
 
+## 2026-11-18 · Bot greets the patient by name and names her doctor
+
+At the team's request the Telegram bot now writes "Здравствуйте, <her name>! Ваш врач: <doctor's name>." It does this after she links and agrees, on /start, /menu and a language switch. After a signal it adds "Ваш врач: <name>." The doctor is the assigned one, or else whoever issued her latest code.
+
+- This replaces "no personal data in bot messages" with "her own name only". It is shown only in a chat that redeemed her one-time code and gave consent; the consent text already says messages travel over the internet.
+- It also shows her the code really was hers.
+- Still never a zone, a diagnosis or a lab value (a test checks this). The /signal web page is unchanged.
+
 ## 2026-11-18 · After the mentor session: sign-in, access rules, referrals, files, patient signals, document reading, DIMED
 
 Built by participant 1 (backend and `shared/`) from `docs/TEAM_PLAN.md`. Contracts went to `main` first so the frontend could start.

@@ -33,6 +33,10 @@ export interface SignalTexts {
   botShortDescription: string;
   /** Command menu labels. */
   commands: { menu: string; stop: string };
+  /** Bot only, after she linked: her name and her doctor's (null when no doctor is assigned). */
+  greeting: (patientName: string, doctorName: string | null) => string;
+  /** Bot only, under the instruction after a signal. */
+  doctorLine: (doctorName: string) => string;
 }
 
 export const SIGNAL_TEXTS: Record<Language, SignalTexts> = {
@@ -76,6 +80,9 @@ export const SIGNAL_TEXTS: Record<Language, SignalTexts> = {
     botShortDescription:
       "Homiladorlikdagi xavotirli belgilar haqida shifokoringizga signal. Shoshilinch — 103.",
     commands: { menu: "Signal tugmalari", stop: "Uzilish (signallarni toʻxtatish)" },
+    greeting: (patient, doctor) =>
+      `Assalomu alaykum, ${patient}!` + (doctor ? `\nShifokoringiz: ${doctor}.` : ""),
+    doctorLine: (doctor) => `Shifokoringiz: ${doctor}.`,
   },
   ru: {
     kinds: {
@@ -115,6 +122,9 @@ export const SIGNAL_TEXTS: Record<Language, SignalTexts> = {
       "Ona-Bola Signal: сообщить своей поликлинике о тревожных признаках во время беременности. Подключитесь по ссылке или коду от вашего врача. Сервис не заменяет скорую помощь: при угрозе жизни звоните 103. Прототип, только тестовые данные.",
     botShortDescription: "Сигнал врачу о тревожных признаках беременности. Срочно — звоните 103.",
     commands: { menu: "Кнопки сигнала", stop: "Отключиться (прекратить сигналы)" },
+    greeting: (patient, doctor) =>
+      `Здравствуйте, ${patient}!` + (doctor ? `\nВаш врач: ${doctor}.` : ""),
+    doctorLine: (doctor) => `Ваш врач: ${doctor}.`,
   },
   en: {
     kinds: {
@@ -155,5 +165,8 @@ export const SIGNAL_TEXTS: Record<Language, SignalTexts> = {
       "Ona-Bola Signal: tell your polyclinic about warning signs during pregnancy. Connect with the link or code from your doctor. This does not replace an ambulance: if your life is in danger, call 103. Prototype, test data only.",
     botShortDescription: "Signal your doctor about pregnancy warning signs. Emergency: call 103.",
     commands: { menu: "Signal buttons", stop: "Disconnect (stop signals)" },
+    greeting: (patient, doctor) =>
+      `Hello, ${patient}!` + (doctor ? `\nYour doctor: ${doctor}.` : ""),
+    doctorLine: (doctor) => `Your doctor: ${doctor}.`,
   },
 };

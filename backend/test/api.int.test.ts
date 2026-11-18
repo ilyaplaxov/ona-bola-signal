@@ -1417,7 +1417,15 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
           data: `agree:${code}`,
         },
       });
-      expect(texts().slice(-2)).toEqual([SIGNAL_TEXTS.ru.linked, SIGNAL_TEXTS.ru.menu]);
+      // Greeted by her own name and her doctor's, then the buttons.
+      const card = PatientDetail.parse((await request(app).get(`/api/patients/${demoId}`)).body);
+      const doctorName = card.assignedUser!.displayName;
+      expect(texts().slice(-2)).toEqual([
+        `${SIGNAL_TEXTS.ru.greeting(card.displayName, doctorName)}\n\n${SIGNAL_TEXTS.ru.linked}`,
+        SIGNAL_TEXTS.ru.menu,
+      ]);
+      expect(texts().at(-2)).toContain(card.displayName);
+      expect(texts().at(-2)).toContain(doctorName);
       patient = PatientDetail.parse((await request(app).get(`/api/patients/${demoId}`)).body);
       expect(patient.signalLink?.telegram).toBe(true);
 
@@ -1432,12 +1440,17 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       });
       expect(texts().at(-1)).toContain(SIGNAL_TEXTS.ru.instructions.SEEK_CARE_NOW);
       expect(texts().at(-1)).toContain("103");
+      expect(texts().at(-1)).toContain(SIGNAL_TEXTS.ru.doctorLine(doctorName));
+      // Never a zone or a lab value in a patient's chat.
+      expect(texts().join(" ")).not.toMatch(/Qizil|Sariq|Yashil|RED|YELLOW|g\/L/);
 
       await handle({
         update_id: 5,
         callback_query: { id: "cb3", from: {}, message: { chat }, data: "lang:uz" },
       });
-      expect(texts().at(-1)).toBe(SIGNAL_TEXTS.uz.menu);
+      expect(texts().at(-1)).toBe(
+        `${SIGNAL_TEXTS.uz.greeting(card.displayName, doctorName)}\n\n${SIGNAL_TEXTS.uz.menu}`,
+      );
 
       const signals = SignalListResponse.parse(
         (await request(app).get(`/api/signals?patientId=${demoId}`).set(as("doctor-chilonzor")))

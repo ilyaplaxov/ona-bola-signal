@@ -181,6 +181,33 @@ export async function bindingForWebToken(db: DbExecutor, token: string): Promise
   return row ?? null;
 }
 
+/**
+ * Her own name and her doctor's, for the bot's greeting. Shown only in a chat she linked with the
+ * code and agreed in; never a zone, diagnosis or lab value. Doctor: the assigned one, else whoever
+ * issued her latest code.
+ */
+export async function bindingNames(
+  db: DbExecutor,
+  patientId: string,
+): Promise<{ patientName: string; doctorName: string | null }> {
+  const [row] = await db
+    .select({ patientName: patients.displayName, doctorName: users.displayName })
+    .from(patients)
+    .leftJoin(users, eq(users.id, patients.assignedUserId))
+    .where(eq(patients.id, patientId))
+    .limit(1);
+  if (!row) return { patientName: "", doctorName: null };
+  if (row.doctorName) return { patientName: row.patientName, doctorName: row.doctorName };
+  const [issuer] = await db
+    .select({ name: users.displayName })
+    .from(signalLinkCodes)
+    .innerJoin(users, eq(users.id, signalLinkCodes.issuedBy))
+    .where(eq(signalLinkCodes.patientId, patientId))
+    .orderBy(desc(signalLinkCodes.createdAt))
+    .limit(1);
+  return { patientName: row.patientName, doctorName: issuer?.name ?? null };
+}
+
 /** The patient withdraws: the chat or device stops signalling for her. */
 export async function revokeBinding(db: Database, binding: Binding, now: Date): Promise<void> {
   await db.transaction(async (tx) => {

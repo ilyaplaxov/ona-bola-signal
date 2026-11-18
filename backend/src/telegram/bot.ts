@@ -9,6 +9,7 @@ import {
 import type { Database } from "../db/client";
 import {
   bindingForChat,
+  bindingNames,
   receiveSignal,
   redeemLinkCode,
   revokeBinding,
@@ -118,8 +119,13 @@ export function createBotHandler(deps: { db: Database; api: TelegramApi; clock: 
   const { db, api, clock } = deps;
   const send = (chatId: number, text: string, extra: Record<string, unknown> = {}) =>
     api.call("sendMessage", { chat_id: chatId, text, ...extra });
-  const showMenu = (chatId: number, t: SignalTexts) =>
-    send(chatId, t.menu, { reply_markup: menuKeyboard(t) });
+  const showMenu = (chatId: number, t: SignalTexts, header?: string) =>
+    send(chatId, header ? `${header}\n\n${t.menu}` : t.menu, { reply_markup: menuKeyboard(t) });
+  /** "Hello, <her name>! Your doctor: <name>." for a linked chat. */
+  const greet = async (patientId: string, t: SignalTexts) => {
+    const { patientName, doctorName } = await bindingNames(db, patientId);
+    return patientName ? t.greeting(patientName, doctorName) : undefined;
+  };
 
   async function onMessage(msg: NonNullable<TelegramUpdate["message"]>): Promise<void> {
     if (msg.chat.type !== "private") return;
@@ -146,8 +152,8 @@ export function createBotHandler(deps: { db: Database; api: TelegramApi; clock: 
       } else await send(chatId, t.notLinked);
       return;
     }
-    // /start without a code, /menu, or any text: the buttons again.
-    if (binding) await showMenu(chatId, t);
+    // /start without a code, /menu, or any text: greeting and the buttons again.
+    if (binding) await showMenu(chatId, t, await greet(binding.patientId, t));
     else await send(chatId, t.notLinked);
   }
 
@@ -170,7 +176,8 @@ export function createBotHandler(deps: { db: Database; api: TelegramApi; clock: 
         now: clock(),
       });
       if (!result) return void (await send(chatId, t.badCode));
-      await send(chatId, t.linked);
+      const hello = await greet(result.binding.patientId, t);
+      await send(chatId, hello ? `${hello}\n\n${t.linked}` : t.linked);
       await showMenu(chatId, t);
       return;
     }
@@ -181,7 +188,8 @@ export function createBotHandler(deps: { db: Database; api: TelegramApi; clock: 
       const next = Language.safeParse(value);
       if (!next.success) return;
       await setBindingLanguage(db, binding.id, next.data);
-      await showMenu(chatId, SIGNAL_TEXTS[next.data]);
+      const nt = SIGNAL_TEXTS[next.data];
+      await showMenu(chatId, nt, await greet(binding.patientId, nt));
       return;
     }
 
@@ -190,7 +198,10 @@ export function createBotHandler(deps: { db: Database; api: TelegramApi; clock: 
       if (!kind.success) return;
       try {
         const result = await receiveSignal(db, { binding, kind: kind.data, now: clock() });
-        await send(chatId, `${t.kinds[kind.data]}\n\n${t.instructions[result.instruction]}`);
+        const { doctorName } = await bindingNames(db, binding.patientId);
+        const lines = [t.kinds[kind.data], "", t.instructions[result.instruction]];
+        if (doctorName) lines.push(t.doctorLine(doctorName));
+        await send(chatId, lines.join("\n"));
       } catch (error) {
         if (error instanceof TooManySignalsError) await send(chatId, t.tooMany);
         else throw error;
