@@ -2,6 +2,53 @@
 
 Short log of choices that shape the code, newest first. Add an entry whenever a decision is made or changed.
 
+## 2026-11-18 · After the mentor session: sign-in, access rules, referrals, files, patient signals, document reading, DIMED
+
+Built by participant 1 (backend and `shared/`) from `docs/TEAM_PLAN.md`. Contracts went to `main` first so the frontend could start.
+
+- **Sign-in replaces the role switcher (this changes brief section 11).** The brief said no password system for the demo; the mentor asked for doctor accounts. Seeded accounts sign in with a username and a shared demo password (`demo2026`, shown on the login page while `DEMO_ACCOUNTS` is on). Passwords are scrypt hashes (Node's `crypto`, no new dependency). The session is an httpOnly, SameSite=Lax cookie for 12 hours; only the token's SHA-256 is stored. Sign-in, failed attempts (without the typed username) and sign-out are audited.
+  - **Transition:** the old `x-demo-user-id` header still works behind `AUTH_DEMO_HEADER` (on outside production), and anonymous reads stay open in that mode, so the current frontend and e2e keep working. Once the login page lands, set `AUTH_DEMO_HEADER=false`: every route except health, sign-in, the rule set and the patient's own signal page then needs a session.
+- **Access matrix enforced on the server** (`shared/src/permissions.ts`, draft from TEAM_PLAN section 2, to be checked with a doctor). Who sees which patients:
+  - doctors and nurses: their district;
+  - the alert recipient (SPECIALIST without a specialty): their district, or all districts when none is set;
+  - consultants (SPECIALIST with a specialty): only patients with an open referral (SENT, ACCEPTED, CONCLUDED) to them or their specialty;
+  - managers: everything, read-only.
+
+  Other patients answer 403. Registration and edits are the doctor's, in their own district; nurses record visits. Lists, the dashboard and the audit feed are filtered the same way. `?assigned=me` gives "My patients".
+
+- **Interpretation:** "see their own patients" in the plan's matrix is read as "their district", because a polyclinic obstetrician covers a district and the demo data is organised that way. The `assigned=me` filter gives the narrower list.
+- **Referrals** (mentor item 3).
+  - Flow: SENT → ACCEPTED → CONCLUDED → CLOSED. The addressee accepts and concludes; the author closes or cancels. A step that does not fit the status is a 409.
+  - Addressing: a specialty, or a named consultant of that specialty.
+  - The specialty list (`Specialty`) is a draft; participant 3 confirms it with a doctor.
+  - The reason and the conclusion never go to the audit log.
+  - Two consultants (endocrinologist, cardiologist) were added to the seed.
+- **Attachments** (mentor items 5–7). One file per upload, 10 MB limit, parsed with multer 2.5.0 (the one new dependency).
+  - The type is decided from the file's first bytes: PDF, JPEG, PNG or DICOM. A file renamed to `.pdf` is refused.
+  - Files are stored under random keys in `UPLOADS_DIR` (git-ignored). The original name is kept for clinicians and never written to the audit log.
+  - MRI (DICOM) is stored and downloadable but not rendered; a viewer comes after the hackathon.
+- **Patient signals** (TEAM_PLAN section 2a; our own idea, the assumptions there still need a mentor).
+  - The buttons are the protocol's 13 alarm signs (АУ с. 30, same ids as `data-pack/protocol-data.ts`), plus "labour has started" and "call me back".
+  - The patient is told at once: seek medical help now / call 103 or go to the maternity hospital / your doctor will call. The first is the protocol's wording; 103 is the ambulance number.
+  - Signals never change the zone. A NEW signal counts as escalated after 30 minutes; this is a setting, not a clinical rule.
+  - Linking uses a one-time 8-character code (24 hours, hash stored) and needs the patient's consent first. One Telegram chat holds one patient.
+  - Abuse limits: code attempts are limited per address; the same button within 5 minutes counts as one signal; at most 10 signals an hour per device.
+  - The Telegram bot uses long polling with `fetch`, so it needs no public server and no extra dependency. It runs only with `TELEGRAM_BOT_TOKEN`. It never asks for a name or phone and never sends a zone, a diagnosis or a lab value.
+  - Texts in uz/ru/en live in `shared/src/patient-signal-texts.ts` for the bot and the web page; a native speaker should check them.
+- **AI reads uploaded reports.**
+  - What Claude gets: a PDF as a document block, an image as an image block.
+  - What it returns: the same four measurements as note analysis, plus the gestational age an ultrasound report states for its scan date. It copies the age and never computes it from biometry.
+  - Checks: unit conversion and form checks as for notes. The dating gets the same checks as typed input.
+  - Nothing is saved: the clinician confirms.
+  - A live run on Haiku 5.5 with a synthetic PDF took 7 s and returned the correct values. It first listed absent measures as "missing", so the prompt now says not to.
+  - The audit records the kind of draft, never the content.
+  - Sending real documents to an external model would need a data-processing agreement; the demo uses synthetic files only.
+- **DIMED** (mentor items 1 and 8). We have neither access nor documentation, so we built the integration layer with a stub at the far end.
+  - The outbox gets a row in the same transaction as each new patient, visit, file and consultant conclusion.
+  - A sender in the API process delivers it every 5 s, with back-off up to 5 attempts, and audits each delivery and failure.
+  - `DIMED_MODE=stub` is the default; only `DimedClient` changes when access arrives. Participant 3 is finding out what DIMED accepts.
+- Migrations 0003–0007. All tests: 29 shared, 162 backend, 5 e2e.
+
 ## 2026-11-18 · Pregnancy dating, patient editing, district overview, AI chat
 
 - **The pregnancy is dated, not the due date typed in.** The form asks for the first day of the last menstrual period, or for an ultrasound scan (date plus gestational age in weeks and days). The server derives the LMP-equivalent start and the due date (+280 days, Naegele) with shared helpers (`shared/src/pregnancy.ts`).

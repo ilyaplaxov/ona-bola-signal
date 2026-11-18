@@ -1,9 +1,16 @@
 import type { Language } from "./common";
-import type { SignalInstruction, SignalKind } from "./patient-signal";
+import { SignalKind, type SignalInstruction } from "./patient-signal";
 
 // What the patient reads, in the Telegram bot and on the /signal page: one source for both.
 // The 13 alarm signs follow the protocol's list (АУ с. 30); the wording is shortened for a button.
 // Uzbek and Russian need a native speaker's check (TEAM_PLAN, participant 3).
+
+/** Button order for the bot and the page: labour first, call-back last, the alarm signs between. */
+export const SIGNAL_BUTTON_ORDER: readonly SignalKind[] = [
+  "LABOUR_ONSET",
+  ...SignalKind.options.filter((k) => k !== "LABOUR_ONSET" && k !== "CALL_BACK"),
+  "CALL_BACK",
+];
 
 export interface SignalTexts {
   kinds: Record<SignalKind, string>;

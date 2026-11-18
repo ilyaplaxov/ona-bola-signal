@@ -1,5 +1,6 @@
 import {
   Language,
+  SIGNAL_BUTTON_ORDER,
   SIGNAL_TEXTS,
   SignalKind,
   SignalLinkCode,
@@ -67,13 +68,6 @@ export function telegramApi(token: string, fetchImpl: typeof fetch = fetch): Tel
   };
 }
 
-/** Labour first, call-back last, the protocol's alarm signs in between. */
-export const BUTTON_ORDER: SignalKind[] = [
-  "LABOUR_ONSET",
-  ...SignalKind.options.filter((k) => k !== "LABOUR_ONSET" && k !== "CALL_BACK"),
-  "CALL_BACK",
-];
-
 const LANGUAGE_BUTTONS = [
   { text: "Oʻzbekcha", callback_data: "lang:uz" },
   { text: "Русский", callback_data: "lang:ru" },
@@ -82,7 +76,7 @@ const LANGUAGE_BUTTONS = [
 function menuKeyboard(t: SignalTexts) {
   return {
     inline_keyboard: [
-      ...BUTTON_ORDER.map((kind) => [{ text: t.kinds[kind], callback_data: `sig:${kind}` }]),
+      ...SIGNAL_BUTTON_ORDER.map((kind) => [{ text: t.kinds[kind], callback_data: `sig:${kind}` }]),
       LANGUAGE_BUTTONS,
     ],
   };
