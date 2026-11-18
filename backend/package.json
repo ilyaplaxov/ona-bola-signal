@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:reset": "tsx src/scripts/reset.ts"
+    "db:reset": "tsx src/scripts/reset.ts",
+    "signal:link": "tsx src/scripts/signal-link.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.9.0",

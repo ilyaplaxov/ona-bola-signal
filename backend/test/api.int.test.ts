@@ -57,7 +57,7 @@ import {
 } from "../src/scripts/seed-data";
 import { seedId } from "../src/scripts/seed-ids";
 import { seedDatabase } from "../src/scripts/seed";
-import { createBotHandler, type TelegramApi } from "../src/telegram/bot";
+import { configureBot, createBotHandler, type TelegramApi } from "../src/telegram/bot";
 import {
   processDimedOutbox,
   stubDimedClient,
@@ -1647,6 +1647,81 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
           .body,
       );
       expect(files.items[0]?.dimedStatus).toBeUndefined();
+    });
+  });
+
+  describe("Telegram bot: profile and /stop", () => {
+    const fakeApi = () => {
+      const calls: { method: string; body: Record<string, unknown> }[] = [];
+      const api: TelegramApi = {
+        async call<T>(method: string, body: Record<string, unknown> = {}) {
+          calls.push({ method, body });
+          return {} as T;
+        },
+      };
+      return { api, calls };
+    };
+
+    it("sets the command menu and profile in every language, within Telegram's limits", async () => {
+      const { api, calls } = fakeApi();
+      await configureBot(api);
+      const commands = calls.filter((c) => c.method === "setMyCommands");
+      expect(commands.map((c) => c.body.language_code ?? "default")).toEqual([
+        "default",
+        "ru",
+        "en",
+      ]);
+      for (const c of calls) {
+        const description = c.body.description as string | undefined;
+        const short = c.body.short_description as string | undefined;
+        if (description !== undefined) expect(description.length).toBeLessThanOrEqual(512);
+        if (short !== undefined) expect(short.length).toBeLessThanOrEqual(120);
+      }
+    });
+
+    it("unlinks a patient who sends /stop, and audits it", async () => {
+      const { api, calls } = fakeApi();
+      const handle = createBotHandler({ db, api, clock: () => NOW });
+      const chat = { id: 778001, type: "private" };
+      const { code } = SignalLinkResponse.parse(
+        (
+          await request(app)
+            .post(`/api/patients/${demoId}/signal-link`)
+            .set({ "x-demo-user-id": userId("doctor-chilonzor") })
+        ).body,
+      );
+      await handle({
+        update_id: 1,
+        callback_query: {
+          id: "a",
+          from: { language_code: "ru" },
+          message: { chat },
+          data: `agree:${code}`,
+        },
+      });
+      await handle({
+        update_id: 2,
+        message: { chat, from: { language_code: "ru" }, text: "/stop" },
+      });
+      const texts = calls.filter((c) => c.method === "sendMessage").map((c) => c.body.text);
+      expect(texts.at(-1)).toBe(SIGNAL_TEXTS.ru.unlinked);
+
+      await handle({
+        update_id: 3,
+        callback_query: {
+          id: "b",
+          from: { language_code: "ru" },
+          message: { chat },
+          data: "sig:FEVER_38",
+        },
+      });
+      expect(calls.filter((c) => c.method === "sendMessage").at(-1)?.body.text).toBe(
+        SIGNAL_TEXTS.ru.notLinked,
+      );
+      const audit = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?patientId=${demoId}&limit=200`)).body,
+      );
+      expect(audit.items.some((e) => e.action === "SIGNAL_UNLINKED")).toBe(true);
     });
   });
 });

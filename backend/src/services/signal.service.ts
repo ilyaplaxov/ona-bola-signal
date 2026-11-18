@@ -181,6 +181,25 @@ export async function bindingForWebToken(db: DbExecutor, token: string): Promise
   return row ?? null;
 }
 
+/** The patient withdraws: the chat or device stops signalling for her. */
+export async function revokeBinding(db: Database, binding: Binding, now: Date): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx
+      .update(signalBindings)
+      .set({ revokedAt: now })
+      .where(and(eq(signalBindings.id, binding.id), isNull(signalBindings.revokedAt)));
+    await recordAudit(tx, {
+      actorUserId: null,
+      action: "SIGNAL_UNLINKED",
+      entityType: "PATIENT",
+      entityId: binding.patientId,
+      patientId: binding.patientId,
+      metadata: { channel: binding.channel },
+      createdAt: now,
+    });
+  });
+}
+
 export async function setBindingLanguage(
   db: DbExecutor,
   bindingId: string,

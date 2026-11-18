@@ -22,6 +22,7 @@ export const AuditAction = z.enum([
   "AI_DOCUMENT_ANALYZED",
   "SIGNAL_LINK_ISSUED",
   "SIGNAL_LINKED",
+  "SIGNAL_UNLINKED",
   "SIGNAL_RECEIVED",
   "SIGNAL_HANDLED",
   "DIMED_SENT",

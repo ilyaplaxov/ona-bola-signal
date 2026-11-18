@@ -25,6 +25,14 @@ export interface SignalTexts {
   /** For a chat that is not linked yet. */
   notLinked: string;
   tooMany: string;
+  /** After /stop: she is unlinked and no longer signals through this chat. */
+  unlinked: string;
+  /** Bot profile: shown before the first /start (up to 512 characters). */
+  botDescription: string;
+  /** Bot profile: the line under the name (up to 120 characters). */
+  botShortDescription: string;
+  /** Command menu labels. */
+  commands: { menu: string; stop: string };
 }
 
 export const SIGNAL_TEXTS: Record<Language, SignalTexts> = {
@@ -61,6 +69,13 @@ export const SIGNAL_TEXTS: Record<Language, SignalTexts> = {
     badCode: "Kod notoʻgʻri yoki muddati oʻtgan. Shifokoringizdan yangi kod soʻrang.",
     notLinked: "Avval shifokoringiz bergan havola yoki kod orqali ulaning.",
     tooMany: "Signallar juda koʻp. Ahvolingiz ogʻir boʻlsa — 103 ga qoʻngʻiroq qiling.",
+    unlinked:
+      "Siz uzildingiz: bu chat orqali signallar endi yuborilmaydi. Qayta ulanish uchun shifokoringizdan yangi kod soʻrang.",
+    botDescription:
+      "Ona-Bola Signal: homiladorlikdagi xavotirli belgilar haqida poliklinikangizga xabar berish. Shifokoringiz bergan havola yoki kod orqali ulaning. Bu xizmat tez yordam oʻrnini bosmaydi: hayotingiz xavf ostida boʻlsa, 103 ga qoʻngʻiroq qiling. Prototip, faqat sinov maʼlumotlari.",
+    botShortDescription:
+      "Homiladorlikdagi xavotirli belgilar haqida shifokoringizga signal. Shoshilinch — 103.",
+    commands: { menu: "Signal tugmalari", stop: "Uzilish (signallarni toʻxtatish)" },
   },
   ru: {
     kinds: {
@@ -94,6 +109,12 @@ export const SIGNAL_TEXTS: Record<Language, SignalTexts> = {
     badCode: "Код неверный или устарел. Попросите у врача новый.",
     notLinked: "Сначала подключитесь по ссылке или коду от вашего врача.",
     tooMany: "Слишком много сигналов. Если состояние тяжёлое — звоните 103.",
+    unlinked:
+      "Вы отключены: сигналы через этот чат больше не отправляются. Чтобы подключиться снова, попросите у врача новый код.",
+    botDescription:
+      "Ona-Bola Signal: сообщить своей поликлинике о тревожных признаках во время беременности. Подключитесь по ссылке или коду от вашего врача. Сервис не заменяет скорую помощь: при угрозе жизни звоните 103. Прототип, только тестовые данные.",
+    botShortDescription: "Сигнал врачу о тревожных признаках беременности. Срочно — звоните 103.",
+    commands: { menu: "Кнопки сигнала", stop: "Отключиться (прекратить сигналы)" },
   },
   en: {
     kinds: {
@@ -128,5 +149,11 @@ export const SIGNAL_TEXTS: Record<Language, SignalTexts> = {
     badCode: "The code is wrong or has expired. Ask your doctor for a new one.",
     notLinked: "First connect with the link or code from your doctor.",
     tooMany: "Too many signals. If you feel very unwell, call 103.",
+    unlinked:
+      "You are disconnected: signals no longer go through this chat. To connect again, ask your doctor for a new code.",
+    botDescription:
+      "Ona-Bola Signal: tell your polyclinic about warning signs during pregnancy. Connect with the link or code from your doctor. This does not replace an ambulance: if your life is in danger, call 103. Prototype, test data only.",
+    botShortDescription: "Signal your doctor about pregnancy warning signs. Emergency: call 103.",
+    commands: { menu: "Signal buttons", stop: "Disconnect (stop signals)" },
   },
 };

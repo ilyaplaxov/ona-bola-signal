@@ -11,6 +11,7 @@ import {
   bindingForChat,
   receiveSignal,
   redeemLinkCode,
+  revokeBinding,
   setBindingLanguage,
   TooManySignalsError,
 } from "../services/signal.service";
@@ -89,6 +90,29 @@ export function languageFrom(code: string | undefined): Language {
   return "uz";
 }
 
+/**
+ * The bot's profile and command menu in each language (Telegram shows the one matching the
+ * user's app language; Uzbek is the default). Run at startup; changes only this bot's settings.
+ */
+export async function configureBot(api: TelegramApi): Promise<void> {
+  for (const language of Language.options) {
+    const t = SIGNAL_TEXTS[language];
+    const scope = language === "uz" ? {} : { language_code: language };
+    await api.call("setMyCommands", {
+      commands: [
+        { command: "menu", description: t.commands.menu },
+        { command: "stop", description: t.commands.stop },
+      ],
+      ...scope,
+    });
+    await api.call("setMyDescription", { description: t.botDescription, ...scope });
+    await api.call("setMyShortDescription", {
+      short_description: t.botShortDescription,
+      ...scope,
+    });
+  }
+}
+
 /** Handles one update. Exported for tests, which feed updates and read the calls made. */
 export function createBotHandler(deps: { db: Database; api: TelegramApi; clock: () => Date }) {
   const { db, api, clock } = deps;
@@ -115,6 +139,14 @@ export function createBotHandler(deps: { db: Database; api: TelegramApi; clock: 
       });
       return;
     }
+    if (command === "/stop") {
+      if (binding) {
+        await revokeBinding(db, binding, clock());
+        await send(chatId, t.unlinked);
+      } else await send(chatId, t.notLinked);
+      return;
+    }
+    // /start without a code, /menu, or any text: the buttons again.
     if (binding) await showMenu(chatId, t);
     else await send(chatId, t.notLinked);
   }

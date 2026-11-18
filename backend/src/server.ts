@@ -5,7 +5,7 @@ import { getRuleSet } from "./risk-engine";
 import { DEMO_PASSWORD } from "./scripts/seed-data";
 import { recordRuleSetLoaded } from "./services/audit.service";
 import { aiServiceFromConfig } from "./services/claude.service";
-import { createBotHandler, startPolling, telegramApi } from "./telegram/bot";
+import { configureBot, createBotHandler, startPolling, telegramApi } from "./telegram/bot";
 import { startDimedSender, stubDimedClient } from "./services/dimed.service";
 
 loadEnvFile();
@@ -71,6 +71,10 @@ async function startBot(token: string): Promise<void> {
     const me = await api.call<{ username: string }>("getMe");
     // Long polling and a webhook cannot both be active.
     await api.call("deleteWebhook", { drop_pending_updates: false });
+    // Profile and command menu; a failure here does not stop the bot.
+    await configureBot(api).catch((error: Error) =>
+      console.warn(`Telegram bot: profile not updated: ${error.message}`),
+    );
     botUsername = me.username;
     bot = startPolling({ api, handle: createBotHandler({ db, api, clock: () => new Date() }) });
     console.log(`Telegram bot @${me.username} is polling`);
