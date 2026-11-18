@@ -11,6 +11,7 @@ import { healthRouter } from "./routes/health.routes";
 import { workflowRouter } from "./routes/measurements.routes";
 import { metaRouter } from "./routes/meta.routes";
 import { patientsRouter } from "./routes/patients.routes";
+import { referralsRouter } from "./routes/referrals.routes";
 import { DEMO_PASSWORD } from "./scripts/seed-data";
 
 export interface AppDeps {
@@ -66,6 +67,7 @@ export function createApp(deps: AppDeps): express.Express {
   app.use("/api", metaRouter({ db: deps.db, ruleSet: deps.ruleSet }));
   app.use("/api", workflowRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", aiRouter({ db: deps.db, ai, clock }));
+  app.use("/api", referralsRouter({ db: deps.db, clock }));
 
   app.use("/api", notFound);
   app.use(errorHandler);

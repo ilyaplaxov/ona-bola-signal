@@ -36,7 +36,7 @@ function referredTo(actor: ActorContext): SQL {
   return sql`exists (
     select 1 from referrals r
     where r.patient_id = ${patients.id}
-      and r.status in ('SENT', 'ACCEPTED', 'CONCLUDED')
+      and r.status in ('SENT', 'ACCEPTED', 'CONCLUDED') -- OPEN_REFERRAL_STATUSES
       and (r.to_user_id = ${actor.id}
         or (r.to_user_id is null and r.to_specialty = ${actor.specialty})))`;
 }

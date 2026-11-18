@@ -14,6 +14,7 @@ import { assertPatientAccess, visiblePatients } from "../services/access";
 import type { ActorContext } from "../services/auth.service";
 import { toRuleSetInfo, type RuleSet } from "../risk-engine";
 import { listAudit, type AuditScope } from "../services/audit.service";
+import { countIncoming } from "../services/referral.service";
 import { getDashboardStats, listUsers } from "../services/dashboard.service";
 
 /** What a user sees in feeds: events about patients they may see, and their own actions. */
@@ -30,7 +31,10 @@ export function metaRouter(deps: { db: Database; ruleSet: RuleSet }): Router {
 
   router.get("/dashboard/stats", async (_req, res) => {
     const actor = getActorContext(res);
-    sendJson(res, DashboardStats, await getDashboardStats(deps.db, auditScope(actor)));
+    const stats = await getDashboardStats(deps.db, auditScope(actor));
+    const incomingReferrals =
+      actor?.role === "SPECIALIST" ? await countIncoming(deps.db, actor) : undefined;
+    sendJson(res, DashboardStats, { ...stats, incomingReferrals });
   });
 
   router.get("/users", async (_req, res) => {

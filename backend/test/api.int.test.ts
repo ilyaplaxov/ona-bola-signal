@@ -17,6 +17,8 @@ import {
   DemoAccountsResponse,
   SessionResponse,
   SESSION_COOKIE,
+  Referral,
+  ReferralListResponse,
   type NoteExtractionOutput,
 } from "@ona-bola/shared";
 import request from "supertest";
@@ -977,6 +979,119 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       const total = (s: typeof doctor) => Object.values(s.zoneCounts).reduce((a, b) => a + b, 0);
       expect(total(doctor)).toBeLessThan(total(manager));
       expect(doctor.districts?.map((d) => d.district)).toEqual(["Chilonzor"]);
+    });
+  });
+
+  describe("referrals to consultants", () => {
+    const as = (key: string) => ({ "x-demo-user-id": userId(key) });
+    const write = (body: object, actor = "doctor-chilonzor") =>
+      request(app).post(`/api/patients/${demoId}/referrals`).set(as(actor)).send(body);
+    const act = (id: string, body: object, actor: string) =>
+      request(app).patch(`/api/referrals/${id}`).set(as(actor)).send(body);
+    const reason = "Glyukoza 6,1 mmol/l nahorga: endokrinolog maslahati";
+
+    it("goes from the doctor to the endocrinologist and back with a conclusion", async () => {
+      const created = await write({ toSpecialty: "ENDOCRINOLOGIST", reason, urgency: "URGENT" });
+      expect(created.status).toBe(201);
+      const referral = Referral.parse(created.body);
+      expect(referral).toMatchObject({ status: "SENT", toUser: null, urgency: "URGENT" });
+
+      // Now the endocrinologist sees the patient and the referral in her inbox; the cardiologist does not.
+      expect(
+        (await request(app).get(`/api/patients/${demoId}`).set(as("endocrinologist"))).status,
+      ).toBe(200);
+      expect(
+        (await request(app).get(`/api/patients/${demoId}`).set(as("cardiologist"))).status,
+      ).toBe(403);
+      const inbox = ReferralListResponse.parse(
+        (await request(app).get("/api/referrals?box=incoming").set(as("endocrinologist"))).body,
+      );
+      expect(inbox.items.map((r) => r.id)).toContain(referral.id);
+      const stats = DashboardStats.parse(
+        (await request(app).get("/api/dashboard/stats").set(as("endocrinologist"))).body,
+      );
+      expect(stats.incomingReferrals).toBe(1);
+
+      expect((await act(referral.id, { action: "ACCEPT" }, "cardiologist")).status).toBe(403);
+      const accepted = Referral.parse(
+        (await act(referral.id, { action: "ACCEPT" }, "endocrinologist")).body,
+      );
+      expect(accepted.toUser?.id).toBe(userId("endocrinologist"));
+      expect((await act(referral.id, { action: "ACCEPT" }, "endocrinologist")).status).toBe(409);
+
+      const concluded = Referral.parse(
+        (
+          await act(
+            referral.id,
+            {
+              action: "CONCLUDE",
+              conclusion: "GSD tasdiqlanmadi. Parhez, 2 haftadan keyin glyukoza.",
+            },
+            "endocrinologist",
+          )
+        ).body,
+      );
+      expect(concluded.status).toBe("CONCLUDED");
+      expect(concluded.conclusion).toContain("GSD");
+
+      // Only the author closes it.
+      expect((await act(referral.id, { action: "CLOSE" }, "doctor-yunusobod")).status).toBe(403);
+      const closed = Referral.parse(
+        (await act(referral.id, { action: "CLOSE" }, "doctor-chilonzor")).body,
+      );
+      expect(closed.status).toBe("CLOSED");
+      expect(
+        (await request(app).get(`/api/patients/${demoId}`).set(as("endocrinologist"))).status,
+      ).toBe(403);
+
+      // The audit log has the steps, never the reason or the conclusion.
+      const audit = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?entityType=REFERRAL&entityId=${referral.id}`)).body,
+      );
+      expect(audit.items.map((e) => e.action).sort()).toEqual([
+        "REFERRAL_CREATED",
+        "REFERRAL_UPDATED",
+        "REFERRAL_UPDATED",
+        "REFERRAL_UPDATED",
+      ]);
+      expect(JSON.stringify(audit.items)).not.toContain("Glyukoza");
+      expect(JSON.stringify(audit.items)).not.toContain("GSD");
+    });
+
+    it("lets the author cancel, and a named consultant must match the specialty", async () => {
+      const wrong = await write({
+        toSpecialty: "CARDIOLOGIST",
+        toUserId: userId("endocrinologist"),
+        reason,
+      });
+      expect(wrong.status).toBe(400);
+
+      const r = Referral.parse(
+        (await write({ toSpecialty: "CARDIOLOGIST", reason: "AQB 150/95" })).body,
+      );
+      expect(r.urgency).toBe("ROUTINE");
+      expect((await act(r.id, { action: "CANCEL" }, "cardiologist")).status).toBe(403);
+      expect(
+        Referral.parse((await act(r.id, { action: "CANCEL" }, "doctor-chilonzor")).body).status,
+      ).toBe("CANCELLED");
+      expect((await act(r.id, { action: "ACCEPT" }, "cardiologist")).status).toBe(409);
+    });
+
+    it("keeps nurses and managers from writing referrals", async () => {
+      expect((await write({ toSpecialty: "THERAPIST", reason }, "nurse-chilonzor")).status).toBe(
+        403,
+      );
+      expect((await write({ toSpecialty: "THERAPIST", reason }, "manager")).status).toBe(403);
+    });
+
+    it("shows the doctor's outgoing referrals and the open count on the patient", async () => {
+      Referral.parse((await write({ toSpecialty: "NEPHROLOGIST", reason: "Proteinuriya" })).body);
+      const out = ReferralListResponse.parse(
+        (await request(app).get("/api/referrals?box=outgoing").set(as("doctor-chilonzor"))).body,
+      );
+      expect(out.items.length).toBeGreaterThanOrEqual(3);
+      const patient = PatientDetail.parse((await request(app).get(`/api/patients/${demoId}`)).body);
+      expect(patient.openReferralCount).toBe(1);
     });
   });
 });

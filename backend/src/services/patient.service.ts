@@ -16,6 +16,7 @@ import { ageInYears, gestationalWeek } from "../domain/pregnancy";
 import { HttpError } from "../http-error";
 import { riskGroupsFor } from "../risk-engine";
 import { toAssessment, toMeasurement, toUserRef } from "./mappers";
+import { countOpenForPatient } from "./referral.service";
 
 // Columns shared by the registry list and the patient page. Age and gestational week are derived
 // from the stored dates on every read, so they are always current.
@@ -174,6 +175,7 @@ export async function getPatient(db: DbExecutor, id: string, now: Date): Promise
       latestHbGL: latestHb && "value" in latestHb.value ? latestHb.value.value : null,
     }),
     currentAssessment: row.assessment ? toAssessment(row.assessment) : null,
+    openReferralCount: await countOpenForPatient(db, id),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
