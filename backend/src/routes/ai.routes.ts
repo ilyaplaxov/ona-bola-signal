@@ -11,7 +11,8 @@ import {
 import { Router } from "express";
 import type { Database } from "../db/client";
 import { HttpError } from "../http-error";
-import { requireActor } from "../middleware/auth";
+import { requireActor, requireActorContext } from "../middleware/auth";
+import { assertCan, assertPatientAccess } from "../services/access";
 import { parseInput, sendJson } from "../middleware/validate";
 import { recordAudit } from "../services/audit.service";
 import {
@@ -21,7 +22,7 @@ import {
   type ExplanationFacts,
 } from "../services/claude.service";
 import { toNoteDraft } from "../services/note-draft";
-import { assertPatientExists, getPatient, listMeasurements } from "../services/patient.service";
+import { getPatient, listMeasurements } from "../services/patient.service";
 
 /** Explanations kept in memory. An assessment never changes, so its explanation can be reused. */
 const EXPLANATION_CACHE_SIZE = 200;
@@ -82,11 +83,13 @@ export function aiRouter(deps: { db: Database; ai: AiService | null; clock: () =
   }
 
   router.post("/patients/:id/analyze-note", async (req, res) => {
+    const actorContext = requireActorContext(res);
+    assertCan(actorContext, "AI_USE");
     const actor = requireActor(res);
     const { id } = parseInput(IdParams, req.params);
+    await assertPatientAccess(deps.db, actorContext, id);
     const body = parseInput(AnalyzeNoteRequest, req.body);
     const ai = requireAi();
-    await assertPatientExists(deps.db, id);
 
     const now = deps.clock();
     const result = await callAi("Note analysis", () =>
@@ -114,8 +117,11 @@ export function aiRouter(deps: { db: Database; ai: AiService | null; clock: () =
   });
 
   router.post("/patients/:id/risk/explain", async (req, res) => {
+    const actorContext = requireActorContext(res);
+    assertCan(actorContext, "AI_USE");
     const actor = requireActor(res);
     const { id } = parseInput(IdParams, req.params);
+    await assertPatientAccess(deps.db, actorContext, id);
     const body = parseInput(ExplainRiskRequest, req.body ?? {});
     const ai = requireAi();
     const now = deps.clock();
@@ -159,8 +165,11 @@ export function aiRouter(deps: { db: Database; ai: AiService | null; clock: () =
   });
 
   router.post("/patients/:id/ai/chat", async (req, res) => {
+    const actorContext = requireActorContext(res);
+    assertCan(actorContext, "AI_USE");
     const actor = requireActor(res);
     const { id } = parseInput(IdParams, req.params);
+    await assertPatientAccess(deps.db, actorContext, id);
     const body = parseInput(AiChatRequest, req.body);
     const ai = requireAi();
     const now = deps.clock();

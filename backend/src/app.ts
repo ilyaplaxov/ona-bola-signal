@@ -1,7 +1,8 @@
 import express from "express";
 import type { Database } from "./db/client";
 import type { AiService } from "./services/claude.service";
-import { authenticate } from "./middleware/auth";
+import { HttpError } from "./http-error";
+import { authenticate, getActorContext } from "./middleware/auth";
 import { errorHandler, notFound } from "./middleware/error-handler";
 import type { RuleSet } from "./risk-engine";
 import { aiRouter } from "./routes/ai.routes";
@@ -50,6 +51,17 @@ export function createApp(deps: AppDeps): express.Express {
       },
     }),
   );
+  // Without the legacy demo header, everything below needs a signed-in user, except the rule set
+  // (no patient data) and the patient's own signal page (/api/public/*).
+  if (!(deps.auth?.allowDemoHeader ?? true)) {
+    app.use("/api", (req, res, next) => {
+      const open = req.path === "/ruleset" || req.path.startsWith("/public/");
+      if (!open && !getActorContext(res)) {
+        throw new HttpError(401, "ACTOR_REQUIRED", "Sign in first");
+      }
+      next();
+    });
+  }
   app.use("/api", patientsRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", metaRouter({ db: deps.db, ruleSet: deps.ruleSet }));
   app.use("/api", workflowRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));

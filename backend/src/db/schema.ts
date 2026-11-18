@@ -2,6 +2,8 @@ import type {
   AssessmentReason,
   DataWarning,
   RiskFactors,
+  ReferralStatus,
+  ReferralUrgency,
   Specialty,
   TrendFinding,
 } from "@ona-bola/shared";
@@ -206,5 +208,39 @@ export const auditLogs = pgTable(
     index("audit_logs_patient_time_idx").on(t.patientId, t.createdAt),
     index("audit_logs_entity_idx").on(t.entityType, t.entityId),
     index("audit_logs_created_idx").on(t.createdAt),
+  ],
+);
+
+/** Referral to a consultant (shared Referral). The reason and conclusion never go to the audit log. */
+export const referrals = pgTable(
+  "referrals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    fromUserId: uuid("from_user_id")
+      .notNull()
+      .references(() => users.id),
+    toSpecialty: text("to_specialty").$type<Specialty>().notNull(),
+    /** A named consultant, or who accepted it; null while any consultant of the specialty may take it. */
+    toUserId: uuid("to_user_id").references(() => users.id),
+    reason: text("reason").notNull(),
+    urgency: text("urgency").$type<ReferralUrgency>().notNull(),
+    status: text("status").$type<ReferralStatus>().notNull(),
+    conclusion: text("conclusion"),
+    conclusionAttachmentIds: jsonb("conclusion_attachment_ids")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    createdAt: createdAt(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    concludedAt: timestamp("concluded_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("referrals_patient_idx").on(t.patientId),
+    index("referrals_inbox_idx").on(t.toSpecialty, t.status),
+    index("referrals_to_user_idx").on(t.toUserId),
   ],
 );

@@ -1,4 +1,5 @@
 import type { User } from "@ona-bola/shared";
+import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { STRINGS, type Lang, type Strings } from "../i18n/strings";
 import { setApiActor } from "../services/api";
@@ -34,6 +35,7 @@ function writeStored(key: string, value: string | null): void {
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [lang, setLangState] = useState<Lang>(() => {
     const stored = readStored("ona-bola.lang");
     return stored === "ru" || stored === "en" ? stored : "uz";
@@ -59,6 +61,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setApiActor(id);
       setActorState(id);
       writeStored("ona-bola.actor", id);
+      // Each user sees a different set of patients: drop what the previous one loaded.
+      void queryClient.invalidateQueries();
     },
   };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

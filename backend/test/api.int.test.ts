@@ -593,7 +593,7 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       ).items[0]!;
       const res = await request(aiApp)
         .post(`/api/patients/${never.id}/risk/explain`)
-        .set("x-demo-user-id", nurse)
+        .set("x-demo-user-id", userId("specialist"))
         .send({ language: "uz" });
       expect(res.status).toBe(409);
       expect(ApiErrorBody.parse(res.body).error.code).toBe("CONFLICT");
@@ -602,7 +602,7 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
 
   // Last on purpose: it adds a patient, which would change the counts the earlier tests check.
   describe("POST /api/patients (registration)", () => {
-    const nurse = userId("nurse-chilonzor");
+    const doctor = userId("doctor-chilonzor");
     const valid = {
       externalReference: "OB-TEST-01",
       displayName: "Test Bemor",
@@ -613,7 +613,7 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       riskFactors: { previousCesarean: true },
       assignedUserId: userId("doctor-chilonzor"),
     };
-    const register = (body: unknown, actor: string | null = nurse) => {
+    const register = (body: unknown, actor: string | null = doctor) => {
       const req = request(app).post("/api/patients");
       return (actor ? req.set("x-demo-user-id", actor) : req).send(body as object);
     };
@@ -635,7 +635,7 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
         (await request(app).get(`/api/audit?patientId=${patient.id}`)).body,
       );
       expect(audit.items.map((e) => `${e.action}:${e.actor?.id}`)).toEqual([
-        `PATIENT_CREATED:${nurse}`,
+        `PATIENT_CREATED:${doctor}`,
       ]);
       expect(JSON.stringify(audit.items)).not.toContain(valid.displayName);
     });
@@ -665,15 +665,15 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
   });
 
   describe("pregnancy dating and PATCH /api/patients/:id", () => {
-    const nurse = userId("nurse-chilonzor");
+    const doctor = userId("doctor-chilonzor");
     const base = {
       displayName: "Sana Bemor",
       district: "Chilonzor",
       facility: "Oilaviy poliklinika 12",
     };
     const register = (body: object) =>
-      request(app).post("/api/patients").set("x-demo-user-id", nurse).send(body);
-    const update = (id: string, body: object, actor: string | null = nurse) => {
+      request(app).post("/api/patients").set("x-demo-user-id", doctor).send(body);
+    const update = (id: string, body: object, actor: string | null = doctor) => {
       const req = request(app).patch(`/api/patients/${id}`);
       return (actor ? req.set("x-demo-user-id", actor) : req).send(body);
     };
@@ -751,7 +751,7 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       );
       expect(audit.items[0]).toMatchObject({
         action: "PATIENT_UPDATED",
-        actor: { id: nurse },
+        actor: { id: doctor },
         metadata: { fields: ["displayName", "dating"] },
       });
       expect(JSON.stringify(audit.items)).not.toContain("Yangi Ism");
@@ -870,6 +870,113 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
         clock: () => new Date(NOW.getTime() + 13 * 3_600_000),
       });
       expect((await request(later).get("/api/auth/me").set("Cookie", cookie)).status).toBe(401);
+    });
+  });
+
+  describe("access rules (TEAM_PLAN section 2)", () => {
+    const as = (key: string) => ({ "x-demo-user-id": userId(key) });
+    const strict = createApp({
+      pingDb: () => pingDatabase(pool),
+      db,
+      ruleSet: DEMO_RULE_SET,
+      clock: () => NOW,
+      auth: { allowDemoHeader: false },
+    });
+
+    it("needs a signed-in user for patient data once the demo header is off", async () => {
+      for (const path of [
+        "/api/patients",
+        `/api/patients/${demoId}`,
+        "/api/alerts",
+        "/api/audit",
+      ]) {
+        const res = await request(strict).get(path);
+        expect(res.status, path).toBe(401);
+      }
+      expect((await request(strict).get("/api/ruleset")).status).toBe(200);
+      expect((await request(strict).get("/api/health")).status).toBe(200);
+    });
+
+    it("shows a district doctor only her district, and the manager everything", async () => {
+      const chilonzor = PatientListResponse.parse(
+        (await request(app).get("/api/patients?pageSize=100").set(as("doctor-chilonzor"))).body,
+      );
+      expect(chilonzor.items.length).toBeGreaterThan(0);
+      expect(new Set(chilonzor.items.map((p) => p.district))).toEqual(new Set(["Chilonzor"]));
+
+      const all = PatientListResponse.parse(
+        (await request(app).get("/api/patients?pageSize=100").set(as("manager"))).body,
+      );
+      expect(all.total).toBeGreaterThan(chilonzor.total);
+
+      const other = all.items.find((p) => p.district !== "Chilonzor")!;
+      const denied = await request(app)
+        .get(`/api/patients/${other.id}`)
+        .set(as("doctor-chilonzor"));
+      expect(denied.status).toBe(403);
+      expect(ApiErrorBody.parse(denied.body).error.code).toBe("FORBIDDEN");
+    });
+
+    it("lists only the doctor's own patients with assigned=me", async () => {
+      const mine = PatientListResponse.parse(
+        (
+          await request(app)
+            .get("/api/patients?assigned=me&pageSize=100")
+            .set(as("doctor-chilonzor"))
+        ).body,
+      );
+      expect(mine.items.length).toBeGreaterThan(0);
+      for (const p of mine.items) expect(p.assignedUser?.id).toBe(userId("doctor-chilonzor"));
+      expect((await request(app).get("/api/patients?assigned=me")).status).toBe(401);
+    });
+
+    it("shows a consultant no patients until one is referred to her", async () => {
+      const res = await request(app).get("/api/patients").set(as("endocrinologist"));
+      expect(PatientListResponse.parse(res.body).total).toBe(0);
+      expect(
+        (await request(app).get(`/api/patients/${demoId}`).set(as("endocrinologist"))).status,
+      ).toBe(403);
+    });
+
+    it("keeps the manager read-only and nurses out of registration", async () => {
+      const visit = await request(app)
+        .post(`/api/patients/${demoId}/measurements`)
+        .set(as("manager"))
+        .send({
+          submissionId: seedId("manager-visit"),
+          measuredAt: NOW.toISOString(),
+          measurements: [{ type: "HEMOGLOBIN", value: 120, unit: "g/L" }],
+        });
+      expect(visit.status).toBe(403);
+      const register = await request(app).post("/api/patients").set(as("nurse-chilonzor")).send({
+        externalReference: "OB-NURSE-1",
+        displayName: "X",
+        district: "Chilonzor",
+        facility: "F",
+      });
+      expect(register.status).toBe(403);
+    });
+
+    it("lets a doctor register only in her own district", async () => {
+      const res = await request(app).post("/api/patients").set(as("doctor-chilonzor")).send({
+        externalReference: "OB-ELSEWHERE",
+        displayName: "X",
+        district: "Yunusobod",
+        facility: "F",
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it("scopes the dashboard to the user's patients", async () => {
+      const doctor = DashboardStats.parse(
+        (await request(app).get("/api/dashboard/stats").set(as("doctor-chilonzor"))).body,
+      );
+      const manager = DashboardStats.parse(
+        (await request(app).get("/api/dashboard/stats").set(as("manager"))).body,
+      );
+      const total = (s: typeof doctor) => Object.values(s.zoneCounts).reduce((a, b) => a + b, 0);
+      expect(total(doctor)).toBeLessThan(total(manager));
+      expect(doctor.districts?.map((d) => d.district)).toEqual(["Chilonzor"]);
     });
   });
 });

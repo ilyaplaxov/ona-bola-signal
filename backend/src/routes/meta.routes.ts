@@ -4,13 +4,24 @@ import {
   DashboardStats,
   RuleSetInfo,
   UserListResponse,
+  can,
 } from "@ona-bola/shared";
 import { Router } from "express";
 import type { Database } from "../db/client";
+import { getActorContext } from "../middleware/auth";
 import { parseInput, sendJson } from "../middleware/validate";
+import { assertPatientAccess, visiblePatients } from "../services/access";
+import type { ActorContext } from "../services/auth.service";
 import { toRuleSetInfo, type RuleSet } from "../risk-engine";
-import { listAudit } from "../services/audit.service";
+import { listAudit, type AuditScope } from "../services/audit.service";
 import { getDashboardStats, listUsers } from "../services/dashboard.service";
+
+/** What a user sees in feeds: events about patients they may see, and their own actions. */
+function auditScope(actor: ActorContext | null): AuditScope | undefined {
+  if (!actor) return undefined;
+  const patients = visiblePatients(actor);
+  return patients ? { patients, actorUserId: actor.id } : undefined;
+}
 
 /** Dashboard, demo users, audit trail and the active rule set. */
 export function metaRouter(deps: { db: Database; ruleSet: RuleSet }): Router {
@@ -18,7 +29,8 @@ export function metaRouter(deps: { db: Database; ruleSet: RuleSet }): Router {
   const ruleSetInfo = toRuleSetInfo(deps.ruleSet);
 
   router.get("/dashboard/stats", async (_req, res) => {
-    sendJson(res, DashboardStats, await getDashboardStats(deps.db));
+    const actor = getActorContext(res);
+    sendJson(res, DashboardStats, await getDashboardStats(deps.db, auditScope(actor)));
   });
 
   router.get("/users", async (_req, res) => {
@@ -27,7 +39,10 @@ export function metaRouter(deps: { db: Database; ruleSet: RuleSet }): Router {
 
   router.get("/audit", async (req, res) => {
     const query = parseInput(AuditListQuery, req.query);
-    sendJson(res, AuditListResponse, { items: await listAudit(deps.db, query) });
+    const actor = getActorContext(res);
+    if (query.patientId) await assertPatientAccess(deps.db, actor, query.patientId);
+    const scope = actor && can(actor.role, "AUDIT_VIEW_ALL") ? undefined : auditScope(actor);
+    sendJson(res, AuditListResponse, { items: await listAudit(deps.db, { ...query, scope }) });
   });
 
   router.get("/ruleset", (_req, res) => {

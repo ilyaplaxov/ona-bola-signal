@@ -1,13 +1,19 @@
 import type { DashboardStats, User } from "@ona-bola/shared";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { DbExecutor } from "../db/client";
 import { alerts, patients, users } from "../db/schema";
-import { listAudit } from "./audit.service";
+import { listAudit, type AuditScope } from "./audit.service";
 
-export async function getDashboardStats(db: DbExecutor): Promise<DashboardStats> {
+/** Counts for the patients in `scope` (all when absent); the feed also shows the user's own actions. */
+export async function getDashboardStats(
+  db: DbExecutor,
+  scope?: AuditScope,
+): Promise<DashboardStats> {
+  const visible = scope?.patients;
   const zoneRows = await db
     .select({ zone: patients.currentRiskZone, count: sql`count(*)`.mapWith(Number) })
     .from(patients)
+    .where(visible)
     .groupBy(patients.currentRiskZone);
   const zoneCounts = { GREEN: 0, YELLOW: 0, RED: 0, NOT_ASSESSED: 0 };
   for (const row of zoneRows) zoneCounts[row.zone ?? "NOT_ASSESSED"] = row.count;
@@ -15,7 +21,8 @@ export async function getDashboardStats(db: DbExecutor): Promise<DashboardStats>
   const alertRows = await db
     .select({ severity: alerts.severity, count: sql`count(*)`.mapWith(Number) })
     .from(alerts)
-    .where(eq(alerts.status, "PENDING"))
+    .innerJoin(patients, eq(patients.id, alerts.patientId))
+    .where(and(eq(alerts.status, "PENDING"), visible))
     .groupBy(alerts.severity);
   const pendingAlerts = { total: 0, YELLOW: 0, RED: 0 };
   for (const row of alertRows) {
@@ -26,6 +33,7 @@ export async function getDashboardStats(db: DbExecutor): Promise<DashboardStats>
   // The feed shows what people did and what needs them; routine re-checks would drown it.
   const recentActivity = await listAudit(db, {
     limit: 10,
+    scope,
     actions: [
       "MEASUREMENTS_ADDED",
       "ALERT_CREATED",
@@ -41,12 +49,13 @@ export async function getDashboardStats(db: DbExecutor): Promise<DashboardStats>
       count: sql`count(*)`.mapWith(Number),
     })
     .from(patients)
+    .where(visible)
     .groupBy(patients.district, patients.currentRiskZone);
   const districtAlertRows = await db
     .select({ district: patients.district, count: sql`count(*)`.mapWith(Number) })
     .from(alerts)
     .innerJoin(patients, eq(patients.id, alerts.patientId))
-    .where(eq(alerts.status, "PENDING"))
+    .where(and(eq(alerts.status, "PENDING"), visible))
     .groupBy(patients.district);
   const byDistrict = new Map<string, NonNullable<DashboardStats["districts"]>[number]>();
   const entry = (district: string) => {

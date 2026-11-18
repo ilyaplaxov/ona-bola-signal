@@ -89,8 +89,11 @@ export async function listPatients(
   db: DbExecutor,
   query: PatientListQuery,
   now: Date,
+  scope: { visibility?: SQL | undefined; assignedUserId?: string | undefined } = {},
 ): Promise<PatientListResponse> {
   const filters: SQL[] = [];
+  if (scope.visibility) filters.push(scope.visibility);
+  if (scope.assignedUserId) filters.push(eq(patients.assignedUserId, scope.assignedUserId));
   if (query.q) {
     const pattern = likePattern(query.q);
     const match = or(

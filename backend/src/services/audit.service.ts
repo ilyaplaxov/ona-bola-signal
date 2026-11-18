@@ -1,5 +1,5 @@
 import type { AuditAction, AuditEntityType, AuditEvent, AuditListQuery } from "@ona-bola/shared";
-import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
+import { type SQL, and, desc, eq, inArray, or } from "drizzle-orm";
 import type { DbExecutor } from "../db/client";
 import { auditLogs, patients, users } from "../db/schema";
 import type { RuleSet } from "../risk-engine";
@@ -31,12 +31,29 @@ export async function recordAudit(db: DbExecutor, event: NewAuditEvent): Promise
   });
 }
 
+/**
+ * Limits a feed to events about patients the user may see (a condition on the joined `patients`
+ * table) plus the user's own actions. Absent: everything.
+ */
+export interface AuditScope {
+  patients: SQL;
+  actorUserId: string;
+}
+
 /** Newest first, with the acting user and the patient reference resolved. */
 export async function listAudit(
   db: DbExecutor,
-  query: Partial<Omit<AuditListQuery, "limit">> & { limit: number; actions?: AuditAction[] },
+  query: Partial<Omit<AuditListQuery, "limit">> & {
+    limit: number;
+    actions?: AuditAction[];
+    scope?: AuditScope | undefined;
+  },
 ): Promise<AuditEvent[]> {
   const filters: SQL[] = [];
+  if (query.scope) {
+    const visible = or(query.scope.patients, eq(auditLogs.actorUserId, query.scope.actorUserId));
+    if (visible) filters.push(visible);
+  }
   if (query.patientId) filters.push(eq(auditLogs.patientId, query.patientId));
   if (query.entityType) filters.push(eq(auditLogs.entityType, query.entityType));
   if (query.entityId) filters.push(eq(auditLogs.entityId, query.entityId));

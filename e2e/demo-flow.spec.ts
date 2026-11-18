@@ -72,14 +72,16 @@ test("a nurse's visit turns the zone red and the specialist acknowledges the ale
   await expect.poll(() => pendingBadge(page)).toBe(pendingBefore + 1);
   await shot(page, "03-patient-red-with-reasons");
 
+  // The specialist sees every district, so her badge has its own count.
   await actAs(page, "Kamola Rasulova");
   await page.getByRole("link", { name: /^Ogohlantirishlar\s*\d*$/ }).click();
   const card = page.locator("li", { has: page.getByRole("link", { name: DEMO_PATIENT }) });
   await expect(card).toHaveCount(1);
+  const specialistPending = await pendingBadge(page);
   await shot(page, "04-specialist-inbox");
   await card.getByRole("button", { name: "Tasdiqlash" }).click();
   await expect(card).toHaveCount(0);
-  await expect.poll(() => pendingBadge(page)).toBe(pendingBefore);
+  await expect.poll(() => pendingBadge(page)).toBe(specialistPending - 1);
 
   await page.getByRole("link", { name: "Umumiy holat" }).click();
   const activity = page.locator("li", { hasText: "Ogohlantirish tasdiqlandi" }).first();
@@ -89,7 +91,8 @@ test("a nurse's visit turns the zone red and the specialist acknowledges the ale
 
 test("a new synthetic patient can be registered and starts unassessed", async ({ page }) => {
   await page.goto("/patients");
-  await actAs(page, "Nilufar Saidova");
+  // Registration is the obstetrician's (access matrix); nurses record visits.
+  await actAs(page, "Aziza Karimova");
   await page.getByRole("button", { name: "+ Yangi bemor" }).click();
   await page.locator("#r-ref").fill("OB-E2E-01");
   await page.locator("#r-name").fill("Sinov Bemor");

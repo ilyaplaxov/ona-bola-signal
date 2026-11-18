@@ -79,8 +79,14 @@ export async function createAlert(
 }
 
 /** Inbox order: pending first, red before yellow, newest first. */
-export async function listAlerts(db: DbExecutor, query: AlertListQuery): Promise<Alert[]> {
+export async function listAlerts(
+  db: DbExecutor,
+  query: AlertListQuery,
+  /** Condition on the joined `patients` table (access scope); undefined: all. */
+  visibility?: SQL,
+): Promise<Alert[]> {
   const filters: SQL[] = [];
+  if (visibility) filters.push(visibility);
   if (query.status) filters.push(eq(alerts.status, query.status));
   if (query.severity) filters.push(eq(alerts.severity, query.severity));
   if (query.patientId) filters.push(eq(alerts.patientId, query.patientId));
