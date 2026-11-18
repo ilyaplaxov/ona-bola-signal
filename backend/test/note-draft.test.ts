@@ -1,6 +1,6 @@
 import type { NoteExtractionOutput } from "@ona-bola/shared";
 import { describe, expect, it } from "vitest";
-import { draftTime, toNoteDraft, unitKey } from "../src/services/note-draft";
+import { draftTime, toNoteDraft, toUltrasoundDating, unitKey } from "../src/services/note-draft";
 
 const NOW = new Date("2026-11-18T06:00:00Z"); // 11:00 in Tashkent
 
@@ -133,5 +133,35 @@ describe("draftTime", () => {
     expect(draftTime("yesterday morning", NOW)).toEqual({ measuredAt: null, problem: "badTime" });
     expect(draftTime("2026-11-18T12:00", NOW)).toEqual({ measuredAt: null, problem: "badTime" });
     expect(draftTime(null, NOW)).toEqual({ measuredAt: null });
+  });
+});
+
+describe("ultrasound dating from a report", () => {
+  const today = "2026-11-18";
+  it("accepts a stated gestational age on a real past date", () => {
+    expect(
+      toUltrasoundDating({ scanDate: "2026-11-10", weeks: 22, days: 3 }, { language: "en", today }),
+    ).toEqual({
+      dating: { method: "ULTRASOUND", scanDate: "2026-11-10", weeks: 22, days: 3 },
+      warnings: ["Ultrasound dating found. Check it and save it in the patient's record."],
+    });
+  });
+
+  it("leaves out a missing date, a future date and impossible weeks or days", () => {
+    for (const bad of [
+      { scanDate: null, weeks: 22, days: 3 },
+      { scanDate: "2026-12-01", weeks: 22, days: 3 },
+      { scanDate: "2026-11-10", weeks: 22, days: 9 },
+      { scanDate: "2026-11-10", weeks: 22.5, days: 1 },
+      { scanDate: "10.11.2026", weeks: 22, days: 1 },
+    ]) {
+      const result = toUltrasoundDating(bad, { language: "ru", today });
+      expect(result.dating).toBeNull();
+      expect(result.warnings).toHaveLength(1);
+    }
+    expect(toUltrasoundDating(null, { language: "uz", today })).toEqual({
+      dating: null,
+      warnings: [],
+    });
   });
 });

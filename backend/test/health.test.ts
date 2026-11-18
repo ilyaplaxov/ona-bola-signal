@@ -28,6 +28,7 @@ describe("GET /api/health", () => {
       extractNote: () => Promise.reject(new Error("not called")),
       explainAssessment: () => Promise.reject(new Error("not called")),
       chat: () => Promise.reject(new Error("not called")),
+      extractDocument: () => Promise.reject(new Error("not called")),
     };
     const app = createApp({ pingDb: async () => true, db, ruleSet: DEMO_RULE_SET, ai });
     const res = await request(app).get("/api/health");

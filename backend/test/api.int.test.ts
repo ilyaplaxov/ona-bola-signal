@@ -27,6 +27,7 @@ import {
   SignalListResponse,
   RedeemSignalCodeResponse,
   SIGNAL_TEXTS,
+  AnalyzeDocumentResponse,
   type NoteExtractionOutput,
 } from "@ona-bola/shared";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -453,6 +454,9 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       async chat({ context, messages }) {
         chatsSeen.push({ context, messages });
         return { output: { answer: " Javob. " }, model: "fake-claude" };
+      },
+      async extractDocument() {
+        throw new Error("not used here");
       },
     };
     const aiApp = createApp({
@@ -1457,6 +1461,107 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
         (await request(app).get(`/api/audit?patientId=${demoId}&entityType=PATIENT_SIGNAL`)).body,
       );
       expect(JSON.stringify(audit.items)).not.toContain("777001");
+    });
+  });
+
+  describe("AI reads an uploaded report (fake model)", () => {
+    const as = (key: string) => ({ "x-demo-user-id": userId(key) });
+    const seen: { contentType: string; kind: string; bytes: number }[] = [];
+    const docApp = createApp({
+      pingDb: () => pingDatabase(pool),
+      db,
+      ruleSet: DEMO_RULE_SET,
+      clock: () => NOW,
+      uploadsDir,
+      ai: {
+        model: "fake-claude",
+        extractNote: () => Promise.reject(new Error("not used")),
+        explainAssessment: () => Promise.reject(new Error("not used")),
+        chat: () => Promise.reject(new Error("not used")),
+        async extractDocument({ document, kind }) {
+          seen.push({ contentType: document.contentType, kind, bytes: document.base64.length });
+          return {
+            model: "fake-claude",
+            output: {
+              measuredAt: "2026-11-10",
+              bloodPressure: null,
+              hemoglobin: { value: 104, unitAsWritten: "г/л" },
+              proteinuria: null,
+              glucose: null,
+              ultrasoundDating: { scanDate: "2026-11-10", weeks: 22, days: 3 },
+              missingOrUnclear: [],
+            },
+          };
+        },
+      },
+    });
+    const upload = async (bytes: Buffer, name: string, kind: string) =>
+      Attachment.parse(
+        (
+          await request(docApp)
+            .post(`/api/patients/${demoId}/attachments`)
+            .set(as("doctor-chilonzor"))
+            .field("kind", kind)
+            .attach("file", bytes, name)
+        ).body,
+      );
+
+    it("drafts measurements and the ultrasound dating, and audits without the content", async () => {
+      const file = await upload(
+        Buffer.from("%PDF-1.4\nUZI xulosa\n%%EOF"),
+        "uzi.pdf",
+        "ULTRASOUND",
+      );
+      const res = await request(docApp)
+        .post(`/api/attachments/${file.id}/analyze`)
+        .set(as("doctor-chilonzor"))
+        .send({ language: "ru" });
+      expect(res.status).toBe(200);
+      const body = AnalyzeDocumentResponse.parse(res.body);
+      expect(body.draft.measurements).toEqual([{ type: "HEMOGLOBIN", value: 104, unit: "g/L" }]);
+      expect(body.dating).toEqual({
+        method: "ULTRASOUND",
+        scanDate: "2026-11-10",
+        weeks: 22,
+        days: 3,
+      });
+      expect(seen.at(-1)).toMatchObject({ contentType: "application/pdf", kind: "ULTRASOUND" });
+
+      const audit = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?entityType=ATTACHMENT&entityId=${file.id}`)).body,
+      );
+      const analysed = audit.items.find((e) => e.action === "AI_DOCUMENT_ANALYZED");
+      expect(analysed?.metadata).toMatchObject({ kind: "ULTRASOUND", hasDating: true });
+      expect(JSON.stringify(audit.items)).not.toContain("UZI xulosa");
+    });
+
+    it("refuses DICOM, other districts and a server without AI", async () => {
+      const dicom = Buffer.concat([Buffer.alloc(128), Buffer.from("DICM"), Buffer.alloc(16)]);
+      const mri = await upload(dicom, "mrt.dcm", "MRI");
+      expect(mri.contentType).toBe("application/dicom");
+      expect(
+        (
+          await request(docApp)
+            .post(`/api/attachments/${mri.id}/analyze`)
+            .set(as("doctor-chilonzor"))
+            .send({})
+        ).status,
+      ).toBe(415);
+
+      const pdf = await upload(Buffer.from("%PDF-1.4\n%%EOF"), "a.pdf", "LAB_RESULTS");
+      expect(
+        (
+          await request(docApp)
+            .post(`/api/attachments/${pdf.id}/analyze`)
+            .set(as("doctor-yunusobod"))
+            .send({})
+        ).status,
+      ).toBe(403);
+      const noAi = await request(app)
+        .post(`/api/attachments/${pdf.id}/analyze`)
+        .set(as("doctor-chilonzor"))
+        .send({});
+      expect(noAi.status).toBe(503);
     });
   });
 });

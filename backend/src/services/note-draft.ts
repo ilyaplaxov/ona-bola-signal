@@ -7,6 +7,8 @@ import {
   type Language,
   type MeasurementType,
   type NoteExtractionOutput,
+  PregnancyDating,
+  type DocumentExtractionOutput,
 } from "@ona-bola/shared";
 
 // Turns what Claude read from a note into a draft for the measurement form. Claude only copies
@@ -190,4 +192,45 @@ export function draftTime(
     return { measuredAt: null, problem: "badTime" };
   }
   return { measuredAt: candidate };
+}
+
+const DATING_MESSAGES = {
+  noDate: {
+    uz: "UZI xulosasida tekshiruv sanasi yoʻq, shuning uchun muddat qoʻshilmadi. Sanani qoʻlda kiriting.",
+    ru: "В заключении УЗИ нет даты исследования, срок не подставлен. Введите дату вручную.",
+    en: "The ultrasound report shows no scan date, so the dating was left out. Enter the date by hand.",
+  },
+  invalid: {
+    uz: "UZI boʻyicha muddat tekshiruvdan oʻtmadi (sana yoki hafta/kun), shuning uchun qoʻshilmadi.",
+    ru: "Срок по УЗИ не прошёл проверку (дата или недели/дни), не подставлен.",
+    en: "The ultrasound dating failed the checks (date or weeks/days), so it was left out.",
+  },
+  found: {
+    uz: "UZI boʻyicha muddat topildi. Bemor kartasida tekshirib, saqlang.",
+    ru: "Найден срок по УЗИ. Проверьте и сохраните его в карте пациентки.",
+    en: "Ultrasound dating found. Check it and save it in the patient's record.",
+  },
+} as const;
+
+/**
+ * Turns the gestational age copied from an ultrasound report into a dating for the patient form.
+ * The same checks as typed input: a real date not after today, whole weeks 0–44 and days 0–6.
+ */
+export function toUltrasoundDating(
+  extracted: DocumentExtractionOutput["ultrasoundDating"],
+  options: { language: Language; today: string },
+): { dating: PregnancyDating | null; warnings: string[] } {
+  if (!extracted) return { dating: null, warnings: [] };
+  const { language, today } = options;
+  if (!extracted.scanDate) return { dating: null, warnings: [DATING_MESSAGES.noDate[language]] };
+  const parsed = PregnancyDating.safeParse({
+    method: "ULTRASOUND",
+    scanDate: extracted.scanDate,
+    weeks: extracted.weeks,
+    days: extracted.days,
+  });
+  if (!parsed.success || extracted.scanDate > today) {
+    return { dating: null, warnings: [DATING_MESSAGES.invalid[language]] };
+  }
+  return { dating: parsed.data, warnings: [DATING_MESSAGES.found[language]] };
 }

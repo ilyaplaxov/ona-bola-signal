@@ -77,7 +77,8 @@ export function createApp(deps: AppDeps): express.Express {
   app.use("/api", patientsRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", metaRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", workflowRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
-  app.use("/api", aiRouter({ db: deps.db, ai, clock }));
+  const store = { dir: deps.uploadsDir ?? DEFAULT_UPLOADS_DIR };
+  app.use("/api", aiRouter({ db: deps.db, ai, clock, store }));
   app.use(
     "/api",
     referralsRouter({ db: deps.db, clock, checkAttachments: assertAttachmentsOfPatient }),
@@ -86,14 +87,7 @@ export function createApp(deps: AppDeps): express.Express {
     "/api",
     signalsRouter({ db: deps.db, clock, botUsername: deps.botUsername ?? (() => null) }),
   );
-  app.use(
-    "/api",
-    attachmentsRouter({
-      db: deps.db,
-      clock,
-      store: { dir: deps.uploadsDir ?? DEFAULT_UPLOADS_DIR },
-    }),
-  );
+  app.use("/api", attachmentsRouter({ db: deps.db, clock, store }));
 
   app.use("/api", notFound);
   app.use(errorHandler);

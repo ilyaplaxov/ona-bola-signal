@@ -30,6 +30,22 @@ export const NoteExtractionOutput = z.object({
 });
 export type NoteExtractionOutput = z.infer<typeof NoteExtractionOutput>;
 
+/**
+ * What Claude returns for POST /api/attachments/:id/analyze: the same measurements as a note, plus
+ * the gestational age an ultrasound report states for its scan date (copied, never computed).
+ */
+export const DocumentExtractionOutput = NoteExtractionOutput.extend({
+  ultrasoundDating: z
+    .object({
+      /** YYYY-MM-DD as printed on the report, or null if the report shows no date. */
+      scanDate: z.string().nullable(),
+      weeks: z.number(),
+      days: z.number(),
+    })
+    .nullable(),
+});
+export type DocumentExtractionOutput = z.infer<typeof DocumentExtractionOutput>;
+
 /** What Claude returns for one turn of POST /api/patients/:id/ai/chat. */
 export const ChatOutput = z.object({
   answer: z.string(),

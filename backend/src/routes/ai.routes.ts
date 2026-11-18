@@ -1,5 +1,7 @@
 import {
   AiChatRequest,
+  AnalyzeDocumentRequest,
+  AnalyzeDocumentResponse,
   AiChatResponse,
   AnalyzeNoteRequest,
   AnalyzeNoteResponse,
@@ -19,9 +21,16 @@ import {
   AiUnavailableError,
   type AiService,
   type ChatContext,
+  type DocumentContentType,
   type ExplanationFacts,
+  tashkentTime,
 } from "../services/claude.service";
-import { toNoteDraft } from "../services/note-draft";
+import { toNoteDraft, toUltrasoundDating } from "../services/note-draft";
+import {
+  getAttachment,
+  readAttachmentFile,
+  type AttachmentStore,
+} from "../services/attachment.service";
 import { getPatient, listMeasurements } from "../services/patient.service";
 
 /** Explanations kept in memory. An assessment never changes, so its explanation can be reused. */
@@ -58,7 +67,12 @@ export function toExplanationFacts(
  * Claude endpoints. They answer 503 AI_UNAVAILABLE when AI is off or the call fails, and the
  * clinician carries on by hand: the zone, the alerts and the form never depend on Claude.
  */
-export function aiRouter(deps: { db: Database; ai: AiService | null; clock: () => Date }): Router {
+export function aiRouter(deps: {
+  db: Database;
+  ai: AiService | null;
+  clock: () => Date;
+  store: AttachmentStore;
+}): Router {
   const router = Router();
   const explanations = new Map<string, ExplainRiskResponse>();
 
@@ -213,6 +227,63 @@ export function aiRouter(deps: { db: Database; ai: AiService | null; clock: () =
       answer: result.output.answer.trim(),
       model: result.model,
       generatedAt: now.toISOString(),
+    });
+  });
+
+  router.post("/attachments/:id/analyze", async (req, res) => {
+    const actorContext = requireActorContext(res);
+    assertCan(actorContext, "AI_USE");
+    const { id } = parseInput(IdParams, req.params);
+    const meta = await getAttachment(deps.db, id);
+    await assertPatientAccess(deps.db, actorContext, meta.patientId);
+    const body = parseInput(AnalyzeDocumentRequest, req.body ?? {});
+    if (meta.contentType === "application/dicom") {
+      throw new HttpError(415, "VALIDATION_FAILED", "AI reads PDF and image reports, not DICOM");
+    }
+    const ai = requireAi();
+    const { bytes } = await readAttachmentFile(deps.db, deps.store, id);
+
+    const now = deps.clock();
+    const result = await callAi("Document analysis", () =>
+      ai.extractDocument({
+        document: {
+          contentType: meta.contentType as DocumentContentType,
+          base64: bytes.toString("base64"),
+        },
+        kind: meta.kind,
+        language: body.language,
+        now,
+      }),
+    );
+    const { draft, warnings } = toNoteDraft(result.output, { language: body.language, now });
+    const dating = toUltrasoundDating(result.output.ultrasoundDating, {
+      language: body.language,
+      today: tashkentTime(now).slice(0, 10),
+    });
+
+    await recordAudit(deps.db, {
+      actorUserId: actorContext.id,
+      action: "AI_DOCUMENT_ANALYZED",
+      entityType: "ATTACHMENT",
+      entityId: id,
+      patientId: meta.patientId,
+      // Never the document or its text: only what kind of draft came out.
+      metadata: {
+        model: result.model,
+        language: body.language,
+        kind: meta.kind,
+        contentType: meta.contentType,
+        draftTypes: draft.measurements.map((m) => m.type),
+        hasDating: dating.dating !== null,
+        warningCount: warnings.length + dating.warnings.length,
+      },
+      createdAt: now,
+    });
+    sendJson(res, AnalyzeDocumentResponse, {
+      draft,
+      dating: dating.dating,
+      warnings: [...warnings, ...dating.warnings],
+      model: result.model,
     });
   });
 
