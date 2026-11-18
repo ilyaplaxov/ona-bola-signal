@@ -1,6 +1,7 @@
 import type { Alert } from "@ona-bola/shared";
 import { Link } from "react-router";
-import { useCurrentUser, useSession, useStrings } from "../app/session";
+import { useCan } from "../app/auth";
+import { useSession, useStrings } from "../app/session";
 import { formatDateTime, ruleLabel } from "../i18n/format";
 import { ApiError } from "../services/api";
 import { useAcknowledgeAlert } from "../services/queries";
@@ -16,7 +17,8 @@ export function AlertList({
 }) {
   const s = useStrings();
   const { lang } = useSession();
-  const me = useCurrentUser();
+  // Access matrix (shared/permissions.ts): doctors and specialists confirm alerts, the server checks too.
+  const mayAcknowledge = useCan("ALERT_ACKNOWLEDGE");
   const acknowledge = useAcknowledgeAlert();
 
   if (alerts.length === 0) return <p className="text-sm text-slate-500">{s.alerts.empty}</p>;
@@ -25,7 +27,6 @@ export function AlertList({
     <ul className="space-y-3">
       {alerts.map((alert) => {
         const pending = alert.status === "PENDING";
-        const mayAcknowledge = me?.role === alert.recipientRole;
         const failed =
           acknowledge.variables === alert.id && acknowledge.error instanceof ApiError
             ? acknowledge.error.message
@@ -72,8 +73,8 @@ export function AlertList({
                     type="button"
                     onClick={() => acknowledge.mutate(alert.id)}
                     disabled={!mayAcknowledge || acknowledge.isPending}
-                    title={mayAcknowledge ? undefined : s.alerts.onlySpecialist}
-                    className="rounded-md bg-slate-900 px-3 py-1.5 font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    title={mayAcknowledge ? undefined : s.auth.noPermission}
+                    className="rounded-lg bg-rose-800 px-4 font-semibold text-white hover:bg-rose-900 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
                     {acknowledge.isPending && acknowledge.variables === alert.id
                       ? s.alerts.acknowledging
@@ -90,7 +91,7 @@ export function AlertList({
                   </span>
                 )}
                 {pending && !mayAcknowledge ? (
-                  <p className="mt-1 max-w-48 text-xs text-slate-500">{s.alerts.onlySpecialist}</p>
+                  <p className="mt-1 max-w-48 text-xs text-slate-500">{s.auth.noPermission}</p>
                 ) : null}
                 {failed ? <p className="mt-1 text-xs text-red-700">{failed}</p> : null}
               </div>

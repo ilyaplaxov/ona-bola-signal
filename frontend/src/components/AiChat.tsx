@@ -1,8 +1,8 @@
 import type { ChatMessage } from "@ona-bola/shared";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { useAiChat } from "../services/queries";
-import { AiBadge } from "./AiBadge";
 
 /** The API accepts up to 12 messages; older turns are dropped in pairs so the chat starts with a question. */
 const MAX_SENT = 11;
@@ -14,7 +14,8 @@ const MAX_SENT = 11;
  */
 export function AiChat({ patientId }: { patientId: string }) {
   const s = useStrings();
-  const { lang, actorId } = useSession();
+  const { lang } = useSession();
+  const allowed = useCan("AI_USE");
   const chat = useAiChat(patientId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -48,29 +49,23 @@ export function AiChat({ patientId }: { patientId: string }) {
   };
 
   return (
-    <section
-      className="rounded-xl border border-violet-200 bg-white p-5"
-      aria-labelledby="ai-chat-title"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <h2 id="ai-chat-title" className="flex items-center gap-2 text-lg font-semibold">
-          <AiBadge />
-          {s.ai.chatTitle}
-        </h2>
-        {messages.length > 0 ? (
+    <div>
+      {/* the panel around it (AiPanel) carries the title and the AI mark */}
+      <p className="text-sm text-violet-900">{s.ai.chatHint}</p>
+      {messages.length > 0 ? (
+        <div className="mt-1 flex justify-end">
           <button
             type="button"
             onClick={() => {
               setMessages([]);
               chat.reset();
             }}
-            className="text-xs text-slate-500 hover:text-slate-800"
+            className="text-sm text-slate-500 hover:text-slate-800"
           >
             {s.ai.chatClear}
           </button>
-        ) : null}
-      </div>
-      <p className="mt-1 text-xs text-violet-900/80">{s.ai.chatHint}</p>
+        </div>
+      ) : null}
 
       <div className="mt-3 max-h-80 space-y-2 overflow-y-auto" aria-live="polite">
         {messages.map((m, i) => (
@@ -98,7 +93,7 @@ export function AiChat({ patientId }: { patientId: string }) {
             <button
               key={q}
               type="button"
-              disabled={!actorId || chat.isPending}
+              disabled={!allowed || chat.isPending}
               onClick={() => ask(q)}
               className="rounded-full border border-violet-300 bg-white px-3 py-1 text-xs font-medium text-violet-800 hover:bg-violet-50 disabled:opacity-50"
             >
@@ -113,7 +108,7 @@ export function AiChat({ patientId }: { patientId: string }) {
           {s.ai.chatUnavailable}
         </p>
       ) : null}
-      {!actorId ? <p className="mt-2 text-sm text-amber-800">{s.ai.chooseRole}</p> : null}
+      {!allowed ? <p className="mt-2 text-sm text-amber-800">{s.ai.noPermission}</p> : null}
 
       <form onSubmit={onSubmit} className="mt-3 flex gap-2">
         <input
@@ -127,12 +122,12 @@ export function AiChat({ patientId }: { patientId: string }) {
         />
         <button
           type="submit"
-          disabled={!actorId || chat.isPending || draft.trim() === ""}
+          disabled={!allowed || chat.isPending || draft.trim() === ""}
           className="rounded-md bg-violet-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {s.ai.chatSend}
         </button>
       </form>
-    </section>
+    </div>
   );
 }

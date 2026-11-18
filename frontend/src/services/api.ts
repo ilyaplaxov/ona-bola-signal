@@ -15,6 +15,14 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * true when the server has no such route at all ("No route for POST /api/..."), as opposed to a
+ * route that answered "not found". Used only by the TEMP fallbacks (auth.tsx, temp-api.ts): they
+ * switch themselves off the moment participant 1's real endpoint answers.
+ */
+export const isMissingRoute = (error: unknown): boolean =>
+  error instanceof ApiError && error.status === 404 && error.message.startsWith("No route for");
+
 /** Anything with a parse method, such as a shared Zod schema. */
 interface Parser<T> {
   parse(data: unknown): T;
@@ -35,7 +43,8 @@ export async function requestJson<T>(
 ): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  if (init.body !== undefined && !headers.has("Content-Type")) {
+  // A FormData body (file upload) sets its own multipart Content-Type with the boundary.
+  if (init.body !== undefined && !headers.has("Content-Type") && !(init.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
   if (actorId) headers.set(DEMO_ACTOR_HEADER, actorId);

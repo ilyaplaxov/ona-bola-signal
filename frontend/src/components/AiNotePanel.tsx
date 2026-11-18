@@ -1,5 +1,6 @@
 import type { AnalyzeNoteResponse } from "@ona-bola/shared";
 import { useState } from "react";
+import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { ApiError } from "../services/api";
 import { useAnalyzeNote } from "../services/queries";
@@ -17,7 +18,8 @@ export function AiNotePanel({
   onDraft: (draft: AnalyzeNoteResponse["draft"]) => void;
 }) {
   const s = useStrings();
-  const { lang, actorId } = useSession();
+  const { lang } = useSession();
+  const allowed = useCan("AI_USE");
   const analyze = useAnalyzeNote(patientId);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
@@ -27,7 +29,7 @@ export function AiNotePanel({
 
   const error =
     analyze.error instanceof ApiError && analyze.error.code === "ACTOR_REQUIRED"
-      ? s.ai.chooseRole
+      ? s.ai.noPermission
       : analyze.error
         ? s.ai.unavailable
         : null;
@@ -65,7 +67,7 @@ export function AiNotePanel({
           <button
             type="button"
             onClick={run}
-            disabled={!actorId || note.trim() === "" || analyze.isPending}
+            disabled={!allowed || note.trim() === "" || analyze.isPending}
             className="rounded-md bg-violet-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {analyze.isPending ? s.ai.analyzing : s.ai.analyze}

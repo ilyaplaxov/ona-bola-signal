@@ -1,11 +1,10 @@
-import type { User } from "@ona-bola/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { STRINGS, type Lang, type Strings } from "../i18n/strings";
 import { setApiActor } from "../services/api";
-import { useUsers } from "../services/queries";
 
-// Viewer settings: interface language and the demo user acting in the role switcher.
+// Viewer settings: interface language and, only while the TEMP(auth) fallback in auth.tsx is in
+// use, the demo user id sent in the demo-actor header. Who is signed in is answered by auth.tsx.
 // Kept in localStorage as a convenience only; the app works when storage is unavailable.
 
 interface Session {
@@ -76,11 +75,4 @@ export function useSession(): Session {
 
 export function useStrings(): Strings {
   return STRINGS[useSession().lang];
-}
-
-/** The demo user currently acting, or null. */
-export function useCurrentUser(): User | null {
-  const { actorId } = useSession();
-  const users = useUsers();
-  return users.data?.items.find((u) => u.id === actorId) ?? null;
 }

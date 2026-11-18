@@ -4,6 +4,7 @@ import {
   type MeasurementReading,
 } from "@ona-bola/shared";
 import { useState, type FormEvent } from "react";
+import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { unitLabel } from "../i18n/format";
 import { ApiError } from "../services/api";
@@ -27,7 +28,8 @@ const EMPTY = { systolic: "", diastolic: "", hb: "", protein: "", glucose: "" };
  */
 export function MeasurementForm({ patientId }: { patientId: string }) {
   const s = useStrings();
-  const { lang, actorId } = useSession();
+  const { lang } = useSession();
+  const allowed = useCan("VISIT_ADD");
   const submit = useSubmitMeasurements(patientId);
   const aiEnabled = useAiEnabled();
   const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
@@ -102,7 +104,7 @@ export function MeasurementForm({ patientId }: { patientId: string }) {
   const apiProblem =
     submit.error instanceof ApiError
       ? submit.error.code === "ACTOR_REQUIRED"
-        ? s.form.chooseRole
+        ? s.form.noPermission
         : submit.error.message
       : submit.error
         ? s.common.loadError
@@ -196,7 +198,7 @@ export function MeasurementForm({ patientId }: { patientId: string }) {
       {source === "AI_ASSISTED" ? (
         <p className="text-xs font-medium text-violet-800">{s.ai.draftSource}</p>
       ) : null}
-      {!actorId ? <p className="text-sm text-amber-800">{s.form.chooseRole}</p> : null}
+      {!allowed ? <p className="text-sm text-amber-800">{s.form.noPermission}</p> : null}
       {problem || apiProblem ? (
         <p role="alert" className="text-sm text-red-700">
           {problem ?? apiProblem}
@@ -205,7 +207,7 @@ export function MeasurementForm({ patientId }: { patientId: string }) {
 
       <button
         type="submit"
-        disabled={!actorId || submit.isPending}
+        disabled={!allowed || submit.isPending}
         className="w-full rounded-md bg-rose-700 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         {submit.isPending ? s.form.saving : s.form.submit}

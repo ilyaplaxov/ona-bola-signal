@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { useSession, useStrings } from "../app/session";
 import { ZoneBadge } from "../components/ZoneBadge";
 import { formatDateTime } from "../i18n/format";
-import { useDashboard } from "../services/queries";
+import { useDashboard, useInboxCounts } from "../services/queries";
 
 const ZONE_CARDS: { zone: ZoneFilter; tone: string }[] = [
   { zone: "RED", tone: "border-red-300 bg-red-50" },
@@ -16,6 +16,7 @@ export function DashboardPage() {
   const s = useStrings();
   const { lang } = useSession();
   const stats = useDashboard();
+  const counts = useInboxCounts();
 
   if (stats.isPending) return <p className="text-slate-500">{s.common.loading}</p>;
   if (stats.isError) return <p className="text-red-700">{s.common.loadError}</p>;
@@ -40,6 +41,41 @@ export function DashboardPage() {
             <div className="text-sm text-slate-600">{s.dashboard.patients}</div>
           </Link>
         ))}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Link
+          to="/alerts"
+          id="dash-signals"
+          className="rounded-xl border border-sky-200 bg-white p-4 transition hover:shadow-md"
+        >
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold">{s.signal.listTitle}</h2>
+            <span className="rounded-full border border-sky-300 bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-900">
+              {s.signal.fromPatient}
+            </span>
+          </div>
+          <div className="mt-2 flex items-end gap-3">
+            <span className="text-4xl font-bold tabular-nums">{counts.newSignals}</span>
+            <span className="pb-1 text-sm text-slate-600">{s.signal.status.NEW}</span>
+            {counts.escalatedSignals > 0 ? (
+              <span className="mb-1 rounded-full bg-red-700 px-2.5 py-0.5 text-xs font-bold text-white">
+                {s.signal.escalated}: {counts.escalatedSignals}
+              </span>
+            ) : null}
+          </div>
+        </Link>
+        <Link
+          to="/referrals"
+          id="dash-referrals"
+          className="rounded-xl border border-slate-200 bg-white p-4 transition hover:shadow-md"
+        >
+          <h2 className="font-semibold">{s.referral.inbox}</h2>
+          <div className="mt-2 flex items-end gap-3">
+            <span className="text-4xl font-bold tabular-nums">{counts.incomingReferrals}</span>
+            <span className="pb-1 text-sm text-slate-600">{s.referral.status.SENT}</span>
+          </div>
+        </Link>
       </div>
 
       {districts.length > 0 ? (
@@ -71,7 +107,7 @@ export function DashboardPage() {
                     </td>
                     {ZONE_CARDS.map(({ zone }) => (
                       <td key={zone} className="px-3 py-2">
-                        {d.zoneCounts[zone] || <span className="text-slate-300">0</span>}
+                        {d.zoneCounts[zone] || <span className="text-slate-400">0</span>}
                       </td>
                     ))}
                     <td className="px-3 py-2">
@@ -80,7 +116,7 @@ export function DashboardPage() {
                           {d.pendingAlerts}
                         </span>
                       ) : (
-                        <span className="text-slate-300">0</span>
+                        <span className="text-slate-400">0</span>
                       )}
                     </td>
                   </tr>

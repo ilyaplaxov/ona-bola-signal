@@ -1,6 +1,7 @@
 import { ZoneFilter } from "@ona-bola/shared";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { useCan, useCurrentUser } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { PatientForm } from "../components/PatientForm";
 import { ZoneBadge } from "../components/ZoneBadge";
@@ -27,9 +28,15 @@ export function PatientsPage() {
   const [search, setSearch] = useState(params.get("q") ?? "");
   const [registering, setRegistering] = useState(false);
   const q = useDebounced(search.trim(), 300);
+  const canRegister = useCan("PATIENT_CREATE");
+  const me = useCurrentUser();
+  const mine = params.get("assigned") === "me";
 
   const list = usePatients({ q: q || undefined, zone, district });
   const everyone = usePatients({});
+  // TEMP(api): the server filter `assigned=me` ships with participant 1; until then (and harmlessly
+  // after) the list is narrowed here, so "My patients" works either way.
+  const items = list.data?.items.filter((p) => !mine || p.assignedUser?.id === me?.id);
   const districts = [...new Set(everyone.data?.items.map((p) => p.district) ?? [])].sort();
 
   const setParam = (key: string, value: string | undefined) => {
@@ -51,16 +58,37 @@ export function PatientsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold">{s.patients.title}</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm text-slate-500">
-            {s.patients.total}: {list.data?.total ?? "…"}
+            {s.patients.total}: {items?.length ?? "…"}
           </span>
-          {registering ? null : (
+          <div
+            className="flex overflow-hidden rounded-lg border border-slate-300 bg-white"
+            role="group"
+          >
+            {[
+              [false, s.patients.all],
+              [true, s.profile.myPatients],
+            ].map(([value, label]) => (
+              <button
+                key={String(value)}
+                type="button"
+                aria-pressed={mine === value}
+                onClick={() => setParam("assigned", value ? "me" : undefined)}
+                className={`px-3.5 text-sm font-semibold ${
+                  mine === value ? "bg-rose-800 text-white" : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {registering || !canRegister ? null : (
             <button
               type="button"
               id="register-open"
               onClick={() => setRegistering(true)}
-              className="rounded-md bg-rose-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-800"
+              className="rounded-lg bg-rose-700 px-4 text-sm font-semibold text-white hover:bg-rose-800"
             >
               {s.register.open}
             </button>
@@ -125,7 +153,7 @@ export function PatientsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {list.data?.items.map((p) => (
+            {items?.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-2.5">
                   <ZoneBadge zone={p.currentRiskZone} incomplete={p.hasDataWarnings} />
@@ -157,14 +185,14 @@ export function PatientsPage() {
                       {p.openAlertCount}
                     </span>
                   ) : (
-                    <span className="text-slate-300">0</span>
+                    <span className="text-slate-400">0</span>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {list.data && list.data.items.length === 0 ? (
+        {items && items.length === 0 ? (
           <p className="p-6 text-center text-sm text-slate-500">{s.patients.empty}</p>
         ) : null}
         {list.isPending ? (

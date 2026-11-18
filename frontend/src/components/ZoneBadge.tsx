@@ -4,7 +4,7 @@ import { useStrings } from "../app/session";
 const STYLE: Record<RiskZone | "NONE", string> = {
   RED: "bg-red-600 text-white ring-red-700",
   YELLOW: "bg-amber-300 text-amber-950 ring-amber-500",
-  GREEN: "bg-emerald-600 text-white ring-emerald-700",
+  GREEN: "bg-emerald-700 text-white ring-emerald-800", // emerald-600 gave only 3.8:1 with white
   NONE: "bg-slate-200 text-slate-700 ring-slate-300",
 };
 

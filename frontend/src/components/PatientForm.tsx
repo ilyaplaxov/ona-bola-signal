@@ -12,6 +12,7 @@ import {
 } from "@ona-bola/shared";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
+import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { capitalize, formatDate, riskFactorLabel } from "../i18n/format";
 import { MEASURE_LABELS } from "../i18n/strings";
@@ -84,7 +85,9 @@ export function PatientForm({
   onClose: () => void;
 }) {
   const s = useStrings();
-  const { lang, actorId } = useSession();
+  const { lang } = useSession();
+  // registering needs PATIENT_CREATE, editing an existing card needs PATIENT_EDIT
+  const allowed = useCan(patient ? "PATIENT_EDIT" : "PATIENT_CREATE");
   const navigate = useNavigate();
   const create = useCreatePatient();
   const update = useUpdatePatient(patient?.id ?? "");
@@ -187,7 +190,7 @@ export function PatientForm({
       ? mutation.error.code === "CONFLICT"
         ? s.register.duplicate
         : mutation.error.code === "ACTOR_REQUIRED"
-          ? s.register.chooseRole
+          ? s.register.noPermission
           : mutation.error.code === "VALIDATION_FAILED"
             ? s.register.datingInvalid
             : mutation.error.message
@@ -484,7 +487,7 @@ export function PatientForm({
       </fieldset>
 
       {editing ? <p className="text-xs text-slate-500">{s.register.reassessNote}</p> : null}
-      {!actorId ? <p className="text-sm text-amber-800">{s.register.chooseRole}</p> : null}
+      {!allowed ? <p className="text-sm text-amber-800">{s.register.noPermission}</p> : null}
       {problem || apiProblem ? (
         <p role="alert" className="text-sm text-red-700">
           {problem ?? apiProblem}
@@ -495,7 +498,7 @@ export function PatientForm({
         <button
           type="submit"
           id="patient-form-save"
-          disabled={!actorId || mutation.isPending}
+          disabled={!allowed || mutation.isPending}
           className="rounded-md bg-rose-700 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {mutation.isPending

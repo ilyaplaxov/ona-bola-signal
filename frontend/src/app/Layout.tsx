@@ -1,41 +1,59 @@
-import { useEffect } from "react";
-import { Link, NavLink, Outlet } from "react-router";
-import { useDashboard, useHealth, useUsers } from "../services/queries";
-import { useSession, useStrings } from "./session";
+import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router";
+import { LangSwitch } from "../components/LangSwitch";
+import { LogoMark } from "../pages/home/icons";
+import { useDashboard, useHealth, useInboxCounts } from "../services/queries";
+import { useAuth } from "./auth";
+import { useStrings } from "./session";
 
-/** Shell: prototype banner, navigation, role switcher, language switch, connection dot. */
+/** Doctor part of the site. Nobody signed in goes to the sign-in page and comes back afterwards. */
 export function Layout() {
+  const auth = useAuth();
   const s = useStrings();
-  const { lang, setLang, actorId, setActorId } = useSession();
-  const users = useUsers();
+  const location = useLocation();
+
+  if (auth.status === "loading") {
+    return <p className="app p-8 text-slate-500">{s.common.loading}</p>;
+  }
+  if (auth.status === "out") {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  }
+  return <Shell />;
+}
+
+/** Banner, navigation, profile, language switch and connection dot around the page. */
+function Shell() {
+  const s = useStrings();
+  const { user, logout } = useAuth();
+  const location = useLocation();
   const health = useHealth();
   const dashboard = useDashboard();
-  const pending = dashboard.data?.pendingAlerts.total ?? 0;
-
-  // A remembered demo user that no longer exists (for example after a schema change) is dropped,
-  // otherwise every request would be refused.
-  useEffect(() => {
-    if (users.data && actorId && !users.data.items.some((u) => u.id === actorId)) setActorId(null);
-  }, [users.data, actorId, setActorId]);
+  const counts = useInboxCounts();
+  const pending = (dashboard.data?.pendingAlerts.total ?? 0) + counts.newSignals;
+  const incoming = counts.incomingReferrals;
 
   const links: [string, string][] = [
     ["/dashboard", s.nav.dashboard],
     ["/patients", s.nav.patients],
     ["/alerts", s.nav.alerts],
+    ["/referrals", s.nav.referrals],
     ["/rules", s.nav.rules],
   ];
   const online = health.data?.db === "up";
   const dot = health.isPending ? "bg-slate-300" : online ? "bg-emerald-500" : "bg-red-500";
+  const initial = (user?.displayName.replace(/^dr\.?\s+/i, "").charAt(0) || "?").toUpperCase();
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="bg-amber-100 px-4 py-1.5 text-center text-xs font-medium text-amber-900">
+    <div className="app min-h-screen bg-slate-50 text-slate-800">
+      <div className="bg-rose-100 px-4 py-1.5 text-center text-xs font-medium text-rose-900">
         {s.banner}
       </div>
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-          <Link to="/dashboard" className="text-lg font-bold tracking-tight text-rose-800">
-            Ona-Bola Signal
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-2.5">
+          <Link to="/dashboard" className="flex items-center gap-2.5 text-rose-800">
+            <span className="block h-9 w-9">
+              <LogoMark />
+            </span>
+            <span className="text-lg font-extrabold tracking-tight">Ona-Bola Signal</span>
           </Link>
           <nav className="flex flex-wrap gap-1 text-sm">
             {links.map(([to, label]) => (
@@ -44,9 +62,9 @@ export function Layout() {
                 to={to}
                 end={to === "/dashboard"}
                 className={({ isActive }) =>
-                  `flex items-center gap-1.5 rounded-md px-3 py-1.5 ${
+                  `flex items-center gap-1.5 rounded-lg px-3.5 py-2 transition-colors ${
                     isActive
-                      ? "bg-rose-50 font-semibold text-rose-800"
+                      ? "bg-rose-100 font-semibold text-rose-900"
                       : "text-slate-600 hover:bg-slate-100"
                   }`
                 }
@@ -57,6 +75,11 @@ export function Layout() {
                     {pending}
                   </span>
                 ) : null}
+                {to === "/referrals" && incoming > 0 ? (
+                  <span className="rounded-full bg-amber-600 px-1.5 text-xs font-bold text-white">
+                    {incoming}
+                  </span>
+                ) : null}
               </NavLink>
             ))}
           </nav>
@@ -65,42 +88,36 @@ export function Layout() {
               className={`h-2.5 w-2.5 rounded-full ${dot}`}
               title={online ? "API · DB" : s.common.loadError}
             />
-            <label className="flex items-center gap-2">
-              <span className="text-slate-500">{s.role.label}</span>
-              <select
-                id="role-switcher"
-                value={actorId ?? ""}
-                onChange={(e) => setActorId(e.target.value || null)}
-                className="max-w-64 rounded-md border border-slate-300 bg-white px-2 py-1"
-              >
-                <option value="">{s.role.choose}</option>
-                {users.data?.items.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.displayName} · {s.role[u.role]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex overflow-hidden rounded-md border border-slate-300">
-              {(["uz", "ru", "en"] as const).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setLang(l)}
-                  className={`px-2 py-1 text-xs font-semibold ${
-                    lang === l
-                      ? "bg-slate-900 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  {l.toUpperCase()}
-                </button>
-              ))}
-            </div>
+            <LangSwitch />
+            <Link
+              to="/profile"
+              id="profile-link"
+              className="flex items-center gap-2.5 rounded-lg py-1 pr-2 pl-1 hover:bg-slate-100"
+              title={s.auth.profile}
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-800 font-bold text-white">
+                {initial}
+              </span>
+              <span className="leading-tight">
+                <span className="block font-semibold text-slate-900">{user?.displayName}</span>
+                <span className="block text-xs text-slate-500">
+                  {user ? s.role[user.role] : null}
+                </span>
+              </span>
+            </Link>
+            <button
+              type="button"
+              id="sign-out"
+              onClick={() => void logout()}
+              className="rounded-lg border border-slate-300 bg-white px-3.5 font-medium text-slate-700 hover:bg-slate-100"
+            >
+              {s.auth.signOut}
+            </button>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      {/* keyed by path: one short fade each time a page opens, no other motion */}
+      <main key={location.pathname} className="page-in mx-auto max-w-7xl px-5 py-7">
         <Outlet />
       </main>
     </div>

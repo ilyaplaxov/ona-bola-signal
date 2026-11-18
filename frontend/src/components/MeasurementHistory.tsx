@@ -1,7 +1,8 @@
-import type { Measurement, MeasurementReading } from "@ona-bola/shared";
+import type { DimedSyncStatus, Measurement, MeasurementReading } from "@ona-bola/shared";
 import { useSession, useStrings } from "../app/session";
 import { formatDateTime, formatNumber, unitLabel } from "../i18n/format";
 import { AiBadge } from "./AiBadge";
+import { DimedBadge } from "./DimedBadge";
 import { TrendChart } from "./TrendChart";
 
 interface Visit {
@@ -38,12 +39,20 @@ function series(measurements: Measurement[], pick: (r: MeasurementReading) => nu
   });
 }
 
-export function MeasurementHistory({ measurements }: { measurements: Measurement[] }) {
+/** `dimed` maps a visit (submission id) to its DIMED delivery status; no entries, no column. */
+export function MeasurementHistory({
+  measurements,
+  dimed = {},
+}: {
+  measurements: Measurement[];
+  dimed?: Record<string, DimedSyncStatus>;
+}) {
   const s = useStrings();
   const { lang } = useSession();
   const visits = toVisits(measurements);
+  const showDimed = Object.keys(dimed).length > 0;
   const cell = (r: MeasurementReading | undefined) => {
-    if (!r) return <span className="text-slate-300">{s.common.dash}</span>;
+    if (!r) return <span className="text-slate-400">{s.common.dash}</span>;
     return r.type === "BLOOD_PRESSURE" ? `${r.systolic}/${r.diastolic}` : formatNumber(r.value);
   };
 
@@ -76,6 +85,7 @@ export function MeasurementHistory({ measurements }: { measurements: Measurement
                 {s.patient.glucose}, {unitLabel("mmol/L", lang)}
               </th>
               <th className="px-3 py-2 font-medium">{s.patient.by}</th>
+              {showDimed ? <th className="px-3 py-2 font-medium">DIMED</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -96,6 +106,11 @@ export function MeasurementHistory({ measurements }: { measurements: Measurement
                     </span>
                   ) : null}
                 </td>
+                {showDimed ? (
+                  <td className="px-3 py-2">
+                    <DimedBadge status={dimed[v.submissionId]} />
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
