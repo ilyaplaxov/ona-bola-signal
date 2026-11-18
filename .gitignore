@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.vite/
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Secrets stay out of git. Only the example files are committed.
+.env
+.env.*
+!.env.example
+
+# Playwright output (screenshots for the pitch live in docs/demo/)
+playwright-report/
+test-results/

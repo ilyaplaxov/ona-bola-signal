@@ -1,0 +1,171 @@
+import { Link, useParams } from "react-router";
+import { useSession, useStrings } from "../app/session";
+import { AiExplanation } from "../components/AiExplanation";
+import { AlertList } from "../components/AlertList";
+import { MeasurementForm } from "../components/MeasurementForm";
+import { MeasurementHistory } from "../components/MeasurementHistory";
+import { RiskExplanation } from "../components/RiskExplanation";
+import { RiskGroupChips, RiskGroups } from "../components/RiskGroups";
+import { ZoneBadge } from "../components/ZoneBadge";
+import { formatDate, formatDateTime } from "../i18n/format";
+import { MEASURE_LABELS } from "../i18n/strings";
+import {
+  useAiEnabled,
+  useAlerts,
+  useMeasurements,
+  usePatient,
+  useRiskHistory,
+} from "../services/queries";
+
+const card = "rounded-xl border border-slate-200 bg-white p-5";
+
+export function PatientDetailsPage() {
+  const { id = "" } = useParams();
+  const s = useStrings();
+  const { lang } = useSession();
+  const patient = usePatient(id);
+  const measurements = useMeasurements(id);
+  const risk = useRiskHistory(id);
+  const alerts = useAlerts({ patientId: id });
+  const aiEnabled = useAiEnabled();
+
+  if (patient.isPending) return <p className="text-slate-500">{s.common.loading}</p>;
+  if (patient.isError) return <p className="text-red-700">{s.common.loadError}</p>;
+  const p = patient.data;
+  const factor = (value: boolean | undefined) =>
+    value === undefined ? s.common.notRecorded : value ? s.common.yes : s.common.no;
+
+  return (
+    <div className="space-y-5">
+      <Link to="/patients" className="text-sm text-rose-800 hover:underline">
+        {s.patient.back}
+      </Link>
+
+      <header className={`${card} flex flex-wrap items-start justify-between gap-4`}>
+        <div>
+          <h1 className="text-2xl font-bold">{p.displayName}</h1>
+          <p className="text-sm text-slate-500">
+            <span className="font-mono">{p.externalReference}</span> · {p.district} · {p.facility}
+          </p>
+          <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            <div>
+              <dt className="inline text-slate-500">{s.patient.age}: </dt>
+              <dd className="inline font-medium">{p.ageYears ?? s.common.dash}</dd>
+            </div>
+            <div>
+              <dt className="inline text-slate-500">{s.patient.week}: </dt>
+              <dd className="inline font-medium">
+                {p.gestationalWeek === null
+                  ? s.common.dash
+                  : `${p.gestationalWeek} ${s.common.weeks}`}
+              </dd>
+            </div>
+            <div>
+              <dt className="inline text-slate-500">{s.patient.due}: </dt>
+              <dd className="inline font-medium">
+                {p.estimatedDueDate ? formatDate(p.estimatedDueDate, lang) : s.common.dash}
+              </dd>
+            </div>
+            <div>
+              <dt className="inline text-slate-500">{s.patient.doctor}: </dt>
+              <dd className="inline font-medium">{p.assignedUser?.displayName ?? s.common.dash}</dd>
+            </div>
+          </dl>
+          <RiskGroupChips groups={p.riskGroups} />
+        </div>
+        <ZoneBadge zone={p.currentRiskZone} incomplete={p.hasDataWarnings} large />
+      </header>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          <section className={card}>
+            <h2 className="mb-4 text-lg font-semibold">{s.patient.current}</h2>
+            {p.currentAssessment ? (
+              <div className="space-y-4">
+                <RiskExplanation assessment={p.currentAssessment} />
+                {aiEnabled ? (
+                  <AiExplanation patientId={id} assessmentId={p.currentAssessment.id} />
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-600">{s.patient.notAssessed}</p>
+            )}
+          </section>
+
+          <section className={card}>
+            <h2 className="mb-4 text-lg font-semibold">{s.patient.history}</h2>
+            {measurements.data ? (
+              <MeasurementHistory measurements={measurements.data.items} />
+            ) : (
+              <p className="text-sm text-slate-500">{s.common.loading}</p>
+            )}
+          </section>
+
+          <section className={card}>
+            <h2 className="mb-3 text-lg font-semibold">{s.patient.assessments}</h2>
+            <ol className="space-y-1.5 text-sm">
+              {risk.data?.history.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center gap-3">
+                  <span className="w-40 shrink-0 text-xs text-slate-500 tabular-nums">
+                    {formatDateTime(a.assessedAt, lang)}
+                  </span>
+                  <ZoneBadge zone={a.zone} incomplete={a.dataWarnings.length > 0} />
+                  <span className="text-slate-500">{s.patient.reasonsCount(a.reasons.length)}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+
+        <div className="space-y-5">
+          <section className={card}>
+            <h2 className="mb-2 text-lg font-semibold">{s.form.title}</h2>
+            <MeasurementForm patientId={id} />
+          </section>
+
+          <section className={card}>
+            <h2 className="mb-2 text-lg font-semibold">{s.patient.riskFactors}</h2>
+            <dl className="space-y-1 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-600">
+                  {MEASURE_LABELS["RISK_FACTOR.previousCesarean"][lang]}
+                </dt>
+                <dd className="font-medium">{factor(p.riskFactors.previousCesarean)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-600">
+                  {MEASURE_LABELS["RISK_FACTOR.gestationalDiabetes"][lang]}
+                </dt>
+                <dd className="font-medium">{factor(p.riskFactors.gestationalDiabetes)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-600">{s.riskGroups.parity}</dt>
+                <dd className="font-medium">{p.riskFactors.parity ?? s.common.notRecorded}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-600">{s.riskGroups.bmi}</dt>
+                <dd className="font-medium">{p.riskFactors.bmi ?? s.common.notRecorded}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className={card}>
+            <h2 className="mb-2 text-lg font-semibold">{s.riskGroups.title}</h2>
+            <RiskGroups groups={p.riskGroups} />
+          </section>
+
+          <section className={card}>
+            <h2 className="mb-3 text-lg font-semibold">{s.patient.alerts}</h2>
+            {alerts.data ? (
+              alerts.data.items.length > 0 ? (
+                <AlertList alerts={alerts.data.items} showPatient={false} />
+              ) : (
+                <p className="text-sm text-slate-500">{s.patient.noAlerts}</p>
+              )
+            ) : null}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}

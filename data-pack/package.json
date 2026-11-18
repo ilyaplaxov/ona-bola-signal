@@ -1,0 +1,10 @@
+{
+  "name": "ona-bola-data-pack",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "test": "node --test formulas.test.ts",
+    "seed": "node generate-seed.ts"
+  }
+}

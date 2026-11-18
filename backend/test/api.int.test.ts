@@ -1,0 +1,591 @@
+import {
+  Alert,
+  AlertListResponse,
+  AnalyzeNoteResponse,
+  ApiErrorBody,
+  AuditListResponse,
+  DashboardStats,
+  ExplainRiskResponse,
+  MeasurementListResponse,
+  PatientDetail,
+  PatientListResponse,
+  RiskHistoryResponse,
+  RuleSetInfo,
+  SubmitMeasurementsResponse,
+  UserListResponse,
+  type NoteExtractionOutput,
+} from "@ona-bola/shared";
+import request from "supertest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createApp } from "../src/app";
+import { DEFAULT_DATABASE_URL } from "../src/config";
+import { createDatabase, pingDatabase } from "../src/db/client";
+import { runMigrations } from "../src/db/migrate";
+import { resetDatabase } from "../src/db/reset";
+import { DEMO_RULE_SET } from "../src/risk-engine";
+import {
+  AiUnavailableError,
+  type AiService,
+  type ExplanationFacts,
+} from "../src/services/claude.service";
+import { DEMO_PATIENT_REF, SEED_PATIENTS, SEED_USERS, userId } from "../src/scripts/seed-data";
+import { seedId } from "../src/scripts/seed-ids";
+import { seedDatabase } from "../src/scripts/seed";
+
+// Runs against the separate test database (never the demo one). Skipped when it is not reachable,
+// for example when Docker is not running. Keep every database test in this one file: the suite
+// wipes and reseeds the test database before it starts.
+const TEST_DATABASE_URL =
+  process.env.TEST_DATABASE_URL ?? DEFAULT_DATABASE_URL.replace(/\/ona_bola$/, "/ona_bola_test");
+const NOW = new Date("2026-11-18T06:00:00Z");
+
+const { pool, db } = createDatabase(TEST_DATABASE_URL);
+const reachable = await pingDatabase(pool);
+if (!reachable) await pool.end();
+
+describe.skipIf(!reachable)("API on the seeded test database", () => {
+  const app = createApp({
+    pingDb: () => pingDatabase(pool),
+    db,
+    ruleSet: DEMO_RULE_SET,
+    clock: () => NOW,
+  });
+  const demoId = seedId(`patient:${DEMO_PATIENT_REF}`);
+
+  beforeAll(async () => {
+    await runMigrations(db);
+    await resetDatabase(db);
+    await seedDatabase(db, DEMO_RULE_SET, NOW);
+  });
+
+  afterAll(async () => {
+    await pool.end();
+  });
+
+  describe("GET /api/patients", () => {
+    it("lists every patient, red first", async () => {
+      const res = await request(app).get("/api/patients?pageSize=100");
+      expect(res.status).toBe(200);
+      const body = PatientListResponse.parse(res.body);
+      expect(body.total).toBe(SEED_PATIENTS.length);
+      const zones = body.items.map((p) => p.currentRiskZone);
+      expect(zones.slice(0, 3)).toEqual(["RED", "RED", "RED"]);
+      expect(zones.indexOf("GREEN")).toBeGreaterThan(zones.lastIndexOf("YELLOW"));
+    });
+
+    it("filters by zone, including patients that were never assessed", async () => {
+      const red = PatientListResponse.parse(
+        (await request(app).get("/api/patients?zone=RED")).body,
+      );
+      expect(red.total).toBe(3);
+      expect(red.items.every((p) => p.currentRiskZone === "RED")).toBe(true);
+
+      const none = PatientListResponse.parse(
+        (await request(app).get("/api/patients?zone=NOT_ASSESSED")).body,
+      );
+      expect(none.items.map((p) => p.externalReference)).toEqual(["OB-0016"]);
+      expect(none.items[0]?.lastMeasurementAt).toBeNull();
+    });
+
+    it("searches by reference or name and filters by district", async () => {
+      const found = PatientListResponse.parse(
+        (await request(app).get("/api/patients?q=demo")).body,
+      );
+      expect(found.items.map((p) => p.externalReference)).toEqual([DEMO_PATIENT_REF]);
+
+      const district = PatientListResponse.parse(
+        (await request(app).get("/api/patients?district=Yunusobod&pageSize=100")).body,
+      );
+      expect(district.total).toBe(8);
+      expect(district.items.every((p) => p.district === "Yunusobod")).toBe(true);
+    });
+
+    it("pages results and rejects an unknown zone", async () => {
+      const page = PatientListResponse.parse(
+        (await request(app).get("/api/patients?page=2&pageSize=10")).body,
+      );
+      expect(page.items).toHaveLength(10);
+      expect(page.page).toBe(2);
+      const bad = await request(app).get("/api/patients?zone=PURPLE");
+      expect(bad.status).toBe(400);
+      expect(ApiErrorBody.parse(bad.body).error.code).toBe("VALIDATION_FAILED");
+    });
+
+    it("flags patients whose latest assessment has data warnings", async () => {
+      const body = PatientListResponse.parse(
+        (await request(app).get("/api/patients?q=OB-0014")).body,
+      );
+      expect(body.items[0]).toMatchObject({ currentRiskZone: "GREEN", hasDataWarnings: true });
+    });
+  });
+
+  describe("GET /api/patients/:id and its history", () => {
+    it("returns the demo patient with her current assessment and derived values", async () => {
+      const res = await request(app).get(`/api/patients/${demoId}`);
+      expect(res.status).toBe(200);
+      const patient = PatientDetail.parse(res.body);
+      expect(patient).toMatchObject({
+        externalReference: DEMO_PATIENT_REF,
+        currentRiskZone: "GREEN",
+        gestationalWeek: 32,
+        ageYears: 29,
+        hasDataWarnings: false,
+      });
+      const trend = patient.currentAssessment?.trendFindings.find(
+        (f) => f.ruleId === "DEMO-TREND-SYSTOLIC",
+      );
+      expect(trend?.status).toBe("TRIGGERED");
+    });
+
+    it("returns measurements oldest first", async () => {
+      const body = MeasurementListResponse.parse(
+        (await request(app).get(`/api/patients/${demoId}/measurements`)).body,
+      );
+      const times = body.items.map((m) => m.measuredAt);
+      expect(times).toEqual([...times].sort());
+      expect(body.items.some((m) => m.reading.type === "BLOOD_PRESSURE")).toBe(true);
+    });
+
+    it("returns the risk history newest first, ending in the current assessment", async () => {
+      const [risk, detail] = await Promise.all([
+        request(app).get(`/api/patients/${demoId}/risk`),
+        request(app).get(`/api/patients/${demoId}`),
+      ]);
+      const history = RiskHistoryResponse.parse(risk.body);
+      expect(history.history).toHaveLength(4);
+      expect(history.latest?.id).toBe(PatientDetail.parse(detail.body).currentAssessment?.id);
+    });
+
+    it("explains a red patient with rule ids and observed values", async () => {
+      const id = seedId("patient:OB-0010");
+      const patient = PatientDetail.parse((await request(app).get(`/api/patients/${id}`)).body);
+      expect(patient.currentRiskZone).toBe("RED");
+      const ids = patient.currentAssessment?.reasons.map((r) => r.ruleId);
+      expect(ids).toContain("DEMO-PE-PATTERN");
+      expect(patient.currentAssessment?.ruleSetKind).toBe("ILLUSTRATIVE");
+    });
+
+    it("reads the same haemoglobin of 107 g/L by the trimester it was taken in", async () => {
+      const detail = async (ref: string) =>
+        PatientDetail.parse(
+          (await request(app).get(`/api/patients/${seedId(`patient:${ref}`)}`)).body,
+        );
+      const second = await detail("OB-0001");
+      expect(second.currentRiskZone).toBe("GREEN");
+      const third = await detail("OB-0002");
+      expect(third.currentRiskZone).toBe("YELLOW");
+      const reason = third.currentAssessment?.reasons.find((r) => r.ruleId === "DEMO-HB-LOW-T3");
+      expect(reason?.observed.map((o) => [o.measure, o.value])).toEqual([
+        ["HEMOGLOBIN", 107],
+        ["PATIENT.gestationalWeek", 28],
+      ]);
+    });
+
+    it("adds risk-group badges from the anamnesis, and none without one", async () => {
+      const detail = async (ref: string) =>
+        PatientDetail.parse(
+          (await request(app).get(`/api/patients/${seedId(`patient:${ref}`)}`)).body,
+        );
+      const demo = await detail(DEMO_PATIENT_REF);
+      const raised = demo.riskGroups?.filter((g) => g.level !== "LOW");
+      expect(raised?.map((g) => [g.scale, g.level])).toEqual([["PREECLAMPSIA", "HIGH"]]);
+      expect(raised?.[0]?.matched).toEqual(["NULLIPARITY", "FAMILY_HISTORY_PREECLAMPSIA"]);
+      const scar = await detail("OB-0005");
+      expect(scar.riskGroups?.find((g) => g.scale === "PPH")?.matched).toEqual(["UTERINE_SCAR"]);
+      expect((await detail("OB-0014")).riskGroups).toBeNull();
+    });
+
+    it("answers 404 for an unknown patient and 400 for a malformed id", async () => {
+      const missing = await request(app).get(`/api/patients/${seedId("nobody")}`);
+      expect(missing.status).toBe(404);
+      expect(ApiErrorBody.parse(missing.body).error.code).toBe("NOT_FOUND");
+      const malformed = await request(app).get("/api/patients/not-a-uuid/measurements");
+      expect(malformed.status).toBe(400);
+    });
+  });
+
+  describe("dashboard, users, audit, rule set and acting user", () => {
+    it("counts patients by zone", async () => {
+      const stats = DashboardStats.parse((await request(app).get("/api/dashboard/stats")).body);
+      expect(stats.zoneCounts).toEqual({ RED: 3, YELLOW: 9, GREEN: 11, NOT_ASSESSED: 1 });
+      expect(stats.pendingAlerts).toEqual({ total: 7, RED: 3, YELLOW: 4 });
+      expect(stats.recentActivity.length).toBeGreaterThan(0);
+    });
+
+    it("lists the demo users, including a specialist", async () => {
+      const body = UserListResponse.parse((await request(app).get("/api/users")).body);
+      expect(body.items).toHaveLength(SEED_USERS.length);
+      expect(body.items.some((u) => u.role === "SPECIALIST")).toBe(true);
+    });
+
+    it("returns a patient's audit trail newest first", async () => {
+      const body = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?patientId=${demoId}&limit=200`)).body,
+      );
+      const actions = body.items.map((e) => e.action);
+      expect(actions[0]).toBe("RISK_ASSESSED");
+      expect(actions.at(-1)).toBe("PATIENT_CREATED");
+      expect(actions.filter((a) => a === "MEASUREMENTS_ADDED")).toHaveLength(3);
+    });
+
+    it("serves the active rule set", async () => {
+      const body = RuleSetInfo.parse((await request(app).get("/api/ruleset")).body);
+      expect(body).toMatchObject({ version: "demo-0.2", kind: "ILLUSTRATIVE" });
+      expect(body.rules).toHaveLength(DEMO_RULE_SET.rules.length);
+      expect(body.rules.find((r) => r.id === "DEMO-HB-LOW-T3")).toMatchObject({
+        gestationalWeeks: { from: 28 },
+        source: { citations: [{ document: "UZ_ANTENATAL_CARE_2025", pages: ["28"] }, {}] },
+      });
+    });
+
+    it("accepts a known demo user and rejects an unknown one", async () => {
+      const known = await request(app)
+        .get("/api/users")
+        .set("x-demo-user-id", userId("specialist"));
+      expect(known.status).toBe(200);
+      const unknown = await request(app).get("/api/users").set("x-demo-user-id", seedId("ghost"));
+      expect(unknown.status).toBe(401);
+      expect(ApiErrorBody.parse(unknown.body).error.code).toBe("ACTOR_REQUIRED");
+    });
+  });
+
+  // These tests change the data, so they run last (Vitest runs a file's tests in order).
+  describe("measurement → assessment → alert → acknowledgement", () => {
+    const nurse = userId("nurse-chilonzor");
+    const doctor = userId("doctor-chilonzor");
+    const specialist = userId("specialist");
+    const visit = {
+      submissionId: "5f0c2a4e-8b1d-4c6a-9e2f-000000000001",
+      measuredAt: "2026-11-18T05:30:00Z",
+      measurements: [
+        { type: "BLOOD_PRESSURE", systolic: 148, diastolic: 96, unit: "mmHg" },
+        { type: "PROTEINURIA", value: 0.6, unit: "g/L" },
+      ],
+    };
+    const submit = (body: object, actor?: string) => {
+      const req = request(app).post(`/api/patients/${demoId}/measurements`);
+      return (actor ? req.set("x-demo-user-id", actor) : req).send(body);
+    };
+    const countMeasurements = async () =>
+      MeasurementListResponse.parse(
+        (await request(app).get(`/api/patients/${demoId}/measurements`)).body,
+      ).items.length;
+    let alertId = "";
+
+    it("starts from the seeded inbox: pending first, red before yellow", async () => {
+      const body = AlertListResponse.parse((await request(app).get("/api/alerts")).body);
+      expect(body.items).toHaveLength(10);
+      expect(body.items.slice(0, 3).map((a) => `${a.status}:${a.severity}`)).toEqual([
+        "PENDING:RED",
+        "PENDING:RED",
+        "PENDING:RED",
+      ]);
+      const acknowledged = body.items.filter((a) => a.status === "ACKNOWLEDGED");
+      expect(acknowledged).toHaveLength(3);
+      expect(acknowledged.every((a) => a.acknowledgedBy?.role === "SPECIALIST")).toBe(true);
+    });
+
+    it("refuses a visit without an acting user", async () => {
+      const res = await submit(visit);
+      expect(res.status).toBe(401);
+      expect(ApiErrorBody.parse(res.body).error.code).toBe("ACTOR_REQUIRED");
+    });
+
+    it("rejects a measurement time in the future", async () => {
+      const res = await submit({ ...visit, measuredAt: "2026-11-19T05:30:00Z" }, nurse);
+      expect(res.status).toBe(400);
+      expect(ApiErrorBody.parse(res.body).error.code).toBe("VALIDATION_FAILED");
+    });
+
+    it("turns the demo patient red and raises one red alert for the specialist", async () => {
+      const res = await submit(visit, nurse);
+      expect(res.status).toBe(201);
+      const body = SubmitMeasurementsResponse.parse(res.body);
+      expect(body).toMatchObject({ previousZone: "GREEN", replayed: false });
+      expect(body.assessment.zone).toBe("RED");
+      expect(body.assessment.triggeredRuleIds).toEqual([
+        "DEMO-BP-HIGH",
+        "DEMO-PE-PATTERN",
+        "DEMO-PROTEINURIA",
+      ]);
+      expect(body.measurements.map((m) => m.recordedBy.id)).toEqual([nurse, nurse]);
+      expect(body.newAlertIds).toHaveLength(1);
+      alertId = body.newAlertIds[0] ?? "";
+
+      const alerts = AlertListResponse.parse(
+        (await request(app).get(`/api/alerts?patientId=${demoId}`)).body,
+      );
+      expect(alerts.items[0]).toMatchObject({
+        id: alertId,
+        severity: "RED",
+        status: "PENDING",
+        patientReference: DEMO_PATIENT_REF,
+        recipientRole: "SPECIALIST",
+        triggeredRuleIds: ["DEMO-PE-PATTERN"],
+      });
+      expect(alerts.items[0]?.message).not.toContain("Malika");
+
+      const patient = PatientDetail.parse((await request(app).get(`/api/patients/${demoId}`)).body);
+      expect(patient).toMatchObject({ currentRiskZone: "RED", openAlertCount: 1 });
+    });
+
+    it("returns the first result when the same visit is sent again", async () => {
+      const before = await countMeasurements();
+      const res = await submit(visit, nurse);
+      expect(res.status).toBe(200);
+      const body = SubmitMeasurementsResponse.parse(res.body);
+      expect(body).toMatchObject({ replayed: true, previousZone: "GREEN", newAlertIds: [alertId] });
+      expect(await countMeasurements()).toBe(before);
+    });
+
+    it("refuses the same submission id for another patient", async () => {
+      const res = await request(app)
+        .post(`/api/patients/${seedId("patient:OB-0001")}/measurements`)
+        .set("x-demo-user-id", nurse)
+        .send(visit);
+      expect(res.status).toBe(409);
+    });
+
+    it("stays quiet while the patient stays red for the same reason", async () => {
+      const res = await submit(
+        {
+          submissionId: "5f0c2a4e-8b1d-4c6a-9e2f-000000000002",
+          measuredAt: "2026-11-18T05:45:00Z",
+          measurements: [{ type: "BLOOD_PRESSURE", systolic: 150, diastolic: 97, unit: "mmHg" }],
+        },
+        nurse,
+      );
+      expect(res.status).toBe(201);
+      const body = SubmitMeasurementsResponse.parse(res.body);
+      expect(body).toMatchObject({ previousZone: "RED", newAlertIds: [] });
+      expect(body.assessment.zone).toBe("RED");
+    });
+
+    it("lets only the specialist acknowledge, and only once", async () => {
+      const path = `/api/alerts/${alertId}/acknowledge`;
+      const asDoctor = await request(app).patch(path).set("x-demo-user-id", doctor);
+      expect(asDoctor.status).toBe(403);
+      expect(ApiErrorBody.parse(asDoctor.body).error.code).toBe("FORBIDDEN");
+
+      const asSpecialist = await request(app).patch(path).set("x-demo-user-id", specialist);
+      expect(asSpecialist.status).toBe(200);
+      expect(Alert.parse(asSpecialist.body)).toMatchObject({
+        status: "ACKNOWLEDGED",
+        acknowledgedBy: { id: specialist, role: "SPECIALIST" },
+      });
+
+      const again = await request(app).patch(path).set("x-demo-user-id", specialist);
+      expect(again.status).toBe(409);
+      expect(ApiErrorBody.parse(again.body).error.code).toBe("CONFLICT");
+    });
+
+    it("records the whole chain in the audit trail, in order", async () => {
+      const body = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?patientId=${demoId}&limit=6`)).body,
+      );
+      expect(body.items.map((e) => `${e.action}:${e.actor?.role ?? "SYSTEM"}`)).toEqual([
+        "ALERT_ACKNOWLEDGED:SPECIALIST",
+        "RISK_ASSESSED:SYSTEM",
+        "MEASUREMENTS_ADDED:NURSE",
+        "ALERT_CREATED:SYSTEM",
+        "RISK_ASSESSED:SYSTEM",
+        "MEASUREMENTS_ADDED:NURSE",
+      ]);
+    });
+  });
+
+  describe("Claude endpoints with a fake model (no network, no key)", () => {
+    const nurse = userId("nurse-chilonzor");
+    const note = "Synthetic: 18.11 09:30, AD 150/95 мм рт. ст., Hb 10.4 g/dL, oqsil 0.4 g/l";
+    const extraction: NoteExtractionOutput = {
+      measuredAt: "2026-11-18T09:30",
+      bloodPressure: { systolic: 150, diastolic: 95, unitAsWritten: "мм рт. ст." },
+      hemoglobin: { value: 10.4, unitAsWritten: "g/dL" },
+      proteinuria: { value: 0.4, unitAsWritten: "g/l" },
+      glucose: null,
+      missingOrUnclear: [],
+    };
+    const factsSeen: ExplanationFacts[] = [];
+    let failNext: AiUnavailableError | null = null;
+    const fakeAi: AiService = {
+      model: "fake-claude",
+      async extractNote() {
+        if (failNext) {
+          const error = failNext;
+          failNext = null;
+          throw error;
+        }
+        return { output: extraction, model: "fake-claude" };
+      },
+      async explainAssessment({ facts }) {
+        factsSeen.push(facts);
+        return { output: { summary: " Summary. ", keyPoints: ["One", " "] }, model: "fake-claude" };
+      },
+    };
+    const aiApp = createApp({
+      pingDb: () => pingDatabase(pool),
+      db,
+      ruleSet: DEMO_RULE_SET,
+      clock: () => NOW,
+      ai: fakeAi,
+    });
+    const analyze = (target: typeof app, actor: string | null, patientId = demoId) => {
+      const req = request(target).post(`/api/patients/${patientId}/analyze-note`);
+      return (actor ? req.set("x-demo-user-id", actor) : req).send({ note, language: "en" });
+    };
+
+    it("turns a note into a converted draft and audits it without the note text", async () => {
+      const res = await analyze(aiApp, nurse);
+      expect(res.status).toBe(200);
+      const body = AnalyzeNoteResponse.parse(res.body);
+      expect(body.draft).toEqual({
+        measuredAt: "2026-11-18T09:30:00+05:00",
+        measurements: [
+          { type: "BLOOD_PRESSURE", systolic: 150, diastolic: 95, unit: "mmHg" },
+          { type: "HEMOGLOBIN", value: 104, unit: "g/L" },
+          { type: "PROTEINURIA", value: 0.4, unit: "g/L" },
+        ],
+      });
+      expect(body.warnings).toHaveLength(1);
+      expect(body.model).toBe("fake-claude");
+
+      const audit = AuditListResponse.parse(
+        (await request(aiApp).get(`/api/audit?patientId=${demoId}&limit=1`)).body,
+      );
+      expect(audit.items[0]).toMatchObject({
+        action: "AI_NOTE_ANALYZED",
+        actor: { id: nurse },
+        metadata: { model: "fake-claude", noteLength: note.length, warningCount: 1 },
+      });
+      expect(JSON.stringify(audit.items)).not.toContain("150/95");
+    });
+
+    it("saves nothing: the draft only fills the form", async () => {
+      const before = MeasurementListResponse.parse(
+        (await request(aiApp).get(`/api/patients/${demoId}/measurements`)).body,
+      );
+      await analyze(aiApp, nurse);
+      const after = MeasurementListResponse.parse(
+        (await request(aiApp).get(`/api/patients/${demoId}/measurements`)).body,
+      );
+      expect(after.items).toHaveLength(before.items.length);
+    });
+
+    it("answers AI_UNAVAILABLE when AI is off or the call fails", async () => {
+      const off = await analyze(app, nurse);
+      expect(off.status).toBe(503);
+      expect(ApiErrorBody.parse(off.body).error.code).toBe("AI_UNAVAILABLE");
+
+      failNext = new AiUnavailableError("timeout", "no answer in 15 s");
+      const failed = await analyze(aiApp, nurse);
+      expect(failed.status).toBe(503);
+      expect(ApiErrorBody.parse(failed.body).error).toMatchObject({
+        code: "AI_UNAVAILABLE",
+        details: { reason: "timeout" },
+      });
+    });
+
+    it("needs an acting user and a known patient", async () => {
+      expect((await analyze(aiApp, null)).status).toBe(401);
+      expect((await analyze(aiApp, nurse, seedId("no-such-patient"))).status).toBe(404);
+    });
+
+    it("explains the current assessment from de-identified facts, once per language", async () => {
+      const path = `/api/patients/${demoId}/risk/explain`;
+      const first = await request(aiApp).post(path).set("x-demo-user-id", nurse).send({});
+      expect(first.status).toBe(200);
+      const body = ExplainRiskResponse.parse(first.body);
+      expect(body).toMatchObject({ summary: "Summary.", keyPoints: ["One"], model: "fake-claude" });
+
+      const patient = PatientDetail.parse(
+        (await request(aiApp).get(`/api/patients/${demoId}`)).body,
+      );
+      expect(body.assessmentId).toBe(patient.currentAssessment?.id);
+      const sent = JSON.stringify(factsSeen[0]);
+      expect(factsSeen[0]?.zone).toBe(patient.currentRiskZone);
+      for (const personal of [patient.displayName, patient.externalReference, patient.district]) {
+        expect(sent).not.toContain(personal);
+      }
+
+      const again = await request(aiApp).post(path).set("x-demo-user-id", nurse).send({});
+      expect(ExplainRiskResponse.parse(again.body)).toEqual(body);
+      expect(factsSeen).toHaveLength(1);
+    });
+
+    it("refuses to explain a patient who was never assessed", async () => {
+      const never = PatientListResponse.parse(
+        (await request(aiApp).get("/api/patients?zone=NOT_ASSESSED")).body,
+      ).items[0]!;
+      const res = await request(aiApp)
+        .post(`/api/patients/${never.id}/risk/explain`)
+        .set("x-demo-user-id", nurse)
+        .send({ language: "uz" });
+      expect(res.status).toBe(409);
+      expect(ApiErrorBody.parse(res.body).error.code).toBe("CONFLICT");
+    });
+  });
+
+  // Last on purpose: it adds a patient, which would change the counts the earlier tests check.
+  describe("POST /api/patients (registration)", () => {
+    const nurse = userId("nurse-chilonzor");
+    const valid = {
+      externalReference: "OB-TEST-01",
+      displayName: "Test Bemor",
+      dateOfBirth: "1998-05-04",
+      district: "Chilonzor",
+      facility: "Oilaviy poliklinika 12",
+      estimatedDueDate: "2027-03-01",
+      riskFactors: { previousCesarean: true },
+      assignedUserId: userId("doctor-chilonzor"),
+    };
+    const register = (body: unknown, actor: string | null = nurse) => {
+      const req = request(app).post("/api/patients");
+      return (actor ? req.set("x-demo-user-id", actor) : req).send(body as object);
+    };
+
+    it("registers a patient who starts unassessed, and audits it without the name", async () => {
+      const res = await register(valid);
+      expect(res.status).toBe(201);
+      const patient = PatientDetail.parse(res.body);
+      expect(patient).toMatchObject({
+        externalReference: "OB-TEST-01",
+        currentRiskZone: null,
+        currentAssessment: null,
+        riskFactors: { previousCesarean: true },
+        assignedUser: { id: userId("doctor-chilonzor") },
+        gestationalWeek: expect.any(Number),
+      });
+
+      const audit = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?patientId=${patient.id}`)).body,
+      );
+      expect(audit.items.map((e) => `${e.action}:${e.actor?.id}`)).toEqual([
+        `PATIENT_CREATED:${nurse}`,
+      ]);
+      expect(JSON.stringify(audit.items)).not.toContain(valid.displayName);
+    });
+
+    it("rejects a second patient with the same reference", async () => {
+      const res = await register({ ...valid, displayName: "Boshqa" });
+      expect(res.status).toBe(409);
+      expect(ApiErrorBody.parse(res.body).error.code).toBe("CONFLICT");
+    });
+
+    it("needs an acting user and valid fields", async () => {
+      expect((await register({ ...valid, externalReference: "OB-TEST-02" }, null)).status).toBe(
+        401,
+      );
+      const cases = [
+        { ...valid, externalReference: "OB-TEST-03", district: "" },
+        { ...valid, externalReference: "OB-TEST-04", dateOfBirth: "2027-01-01" },
+        { ...valid, externalReference: "OB-TEST-05", assignedUserId: seedId("nobody") },
+        { ...valid, externalReference: "OB-TEST-06", riskFactors: { smoker: true } },
+      ];
+      for (const body of cases) {
+        const res = await register(body);
+        expect(res.status).toBe(400);
+        expect(ApiErrorBody.parse(res.body).error.code).toBe("VALIDATION_FAILED");
+      }
+    });
+  });
+});

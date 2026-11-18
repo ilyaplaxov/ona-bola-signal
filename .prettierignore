@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+package-lock.json
+backend/drizzle
+docs/PROJECT_BRIEF.md
+# Research pack from the domain lane, kept exactly as delivered (see data-pack/README.md)
+data-pack

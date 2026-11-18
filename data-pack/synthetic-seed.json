@@ -1,0 +1,2795 @@
+{
+  "generatedFor": "Ona-Bola Signal demo, synthetic data only",
+  "referenceDate": "2026-11-18",
+  "ruleSetVersion": "demo-0.2",
+  "notes": [
+    "All people are fictional. Names are random combinations.",
+    "expectedZone assumes the engine evaluates the latest value of each measure at the gestational age it was taken, and combination rules within one visit.",
+    "Trend, response and missing-data rules are not evaluated here; see expectedDynamicRules.",
+    "Glucose items carry a context field (FASTING, OGTT_1H, OGTT_2H); add it to the measurement contract or split the type."
+  ],
+  "zoneCounts": {
+    "GREEN": 15,
+    "YELLOW": 6,
+    "RED": 2,
+    "NOT_ASSESSED": 2
+  },
+  "users": [
+    {
+      "ref": "u-doctor-1",
+      "displayName": "Aziza Musayeva",
+      "role": "DOCTOR",
+      "district": "Ishtixon tumani"
+    },
+    {
+      "ref": "u-doctor-2",
+      "displayName": "Ra'no Ahmedova",
+      "role": "DOCTOR",
+      "district": "Qibray tumani"
+    },
+    {
+      "ref": "u-nurse-1",
+      "displayName": "Gulnoza Tojiyeva",
+      "role": "NURSE",
+      "district": "Ishtixon tumani"
+    },
+    {
+      "ref": "u-specialist-1",
+      "displayName": "Dilfuza Hasanova",
+      "role": "SPECIALIST",
+      "district": "Ishtixon tumani"
+    },
+    {
+      "ref": "u-manager-1",
+      "displayName": "Sherzod Qosimov",
+      "role": "MANAGER",
+      "district": "Ishtixon tumani"
+    }
+  ],
+  "patients": [
+    {
+      "externalReference": "OB-0001",
+      "displayName": "Dilnoza Karimova",
+      "dateOfBirth": "2006-06-13",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-05-30",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [],
+        "parity": 0,
+        "heightCm": 156,
+        "prePregnancyWeightKg": 54,
+        "bmi": 22.2,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "d0a48616-0d3e-4604-adb2-0eba9127ed48",
+          "measuredAt": "2026-10-31T12:08:00+05:00",
+          "gestationalWeeks": 9.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 105,
+              "diastolic": 67,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 121,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.3,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.05,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0002",
+      "displayName": "Madina Rahimova",
+      "dateOfBirth": "2004-06-01",
+      "region": "Toshkent viloyati",
+      "district": "Qibray tumani",
+      "facility": "Qibray tumani 1-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-05-18",
+      "assignedUserRef": "u-doctor-2",
+      "riskFactors": {
+        "flags": [
+          "UTERINE_SCAR"
+        ],
+        "parity": 2,
+        "heightCm": 166,
+        "prePregnancyWeightKg": 66,
+        "bmi": 24,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "HIGH",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "77a7f1cc-bd62-4b81-8734-f98afaf24790",
+          "measuredAt": "2026-10-18T12:24:00+05:00",
+          "gestationalWeeks": 9.7,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 117,
+              "diastolic": 76,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 121,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0003",
+      "displayName": "Gulnora Yusupova",
+      "dateOfBirth": "2001-02-15",
+      "region": "Farg'ona viloyati",
+      "district": "Quva tumani",
+      "facility": "Quva tumani 3-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-04-27",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [],
+        "parity": 2,
+        "heightCm": 162,
+        "prePregnancyWeightKg": 51,
+        "bmi": 19.4,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "98b721bd-06e0-4c92-aa68-9dd9cc72fd59",
+          "measuredAt": "2026-09-30T09:50:00+05:00",
+          "gestationalWeeks": 10.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 116,
+              "diastolic": 76,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 125,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0004",
+      "displayName": "Shahnoza Tursunova",
+      "dateOfBirth": "2001-07-25",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-04-05",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "VARICOSE_VEINS"
+        ],
+        "parity": 0,
+        "heightCm": 159,
+        "prePregnancyWeightKg": 58,
+        "bmi": 22.9,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "MODERATE",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "348f4c0d-3738-4ed5-b90e-278e7e772336",
+          "measuredAt": "2026-09-08T12:50:00+05:00",
+          "gestationalWeeks": 10.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 114,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 122,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.4,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.07,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "56bff2d2-0e33-4699-bb5d-00498643730c",
+          "measuredAt": "2026-11-08T10:02:00+05:00",
+          "gestationalWeeks": 18.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 103,
+              "diastolic": 70,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0005",
+      "displayName": "Nilufar Abdullayeva",
+      "dateOfBirth": "2000-07-26",
+      "region": "Toshkent viloyati",
+      "district": "Qibray tumani",
+      "facility": "Qibray tumani 1-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-03-14",
+      "assignedUserRef": "u-doctor-2",
+      "riskFactors": {
+        "flags": [],
+        "parity": 2,
+        "heightCm": 156,
+        "prePregnancyWeightKg": 67,
+        "bmi": 27.5,
+        "rhNegative": true
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "e9e391ae-08c3-488b-8503-505a7f6822e8",
+          "measuredAt": "2026-08-17T10:19:00+05:00",
+          "gestationalWeeks": 10.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 119,
+              "diastolic": 69,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 123,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.7,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.09,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "51cb941d-bb5c-48f2-8361-6f8c1416b316",
+          "measuredAt": "2026-10-19T09:54:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 114,
+              "diastolic": 61,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0006",
+      "displayName": "Zarina Ergasheva",
+      "dateOfBirth": "2001-01-30",
+      "region": "Farg'ona viloyati",
+      "district": "Quva tumani",
+      "facility": "Quva tumani 3-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-03-02",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "UTERINE_SCAR"
+        ],
+        "parity": 1,
+        "heightCm": 152,
+        "prePregnancyWeightKg": 65,
+        "bmi": 28.1,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "HIGH",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "331eadf3-0d34-40c5-84c5-72cf13155d7e",
+          "measuredAt": "2026-08-03T09:44:00+05:00",
+          "gestationalWeeks": 9.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 105,
+              "diastolic": 68,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 126,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.6,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "f8808c78-8fbb-4e79-bd7f-10f50806247c",
+          "measuredAt": "2026-10-07T12:06:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 104,
+              "diastolic": 64,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0007",
+      "displayName": "Malika Nazarova",
+      "dateOfBirth": "2000-04-29",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-02-14",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "FAMILY_HISTORY_DIABETES"
+        ],
+        "parity": 0,
+        "heightCm": 164,
+        "prePregnancyWeightKg": 57,
+        "bmi": 21.2,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "HIGH",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "1bf08c8f-573a-48ec-96e6-5bc298931483",
+          "measuredAt": "2026-07-20T09:53:00+05:00",
+          "gestationalWeeks": 10.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 119,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 123,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.7,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.09,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "f0f33ff1-a1f5-48dd-9a95-29e0e8b60a3b",
+          "measuredAt": "2026-09-20T09:21:00+05:00",
+          "gestationalWeeks": 19,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 107,
+              "diastolic": 64,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "96ad295a-3662-4455-9ade-ab7522fd9186",
+          "measuredAt": "2026-11-09T11:19:00+05:00",
+          "gestationalWeeks": 26.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 109,
+              "diastolic": 68,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 112,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 8.2,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.4,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0008",
+      "displayName": "Feruza Saidova",
+      "dateOfBirth": "2001-08-16",
+      "region": "Toshkent viloyati",
+      "district": "Qibray tumani",
+      "facility": "Qibray tumani 1-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-02-01",
+      "assignedUserRef": "u-doctor-2",
+      "riskFactors": {
+        "flags": [],
+        "parity": 2,
+        "heightCm": 159,
+        "prePregnancyWeightKg": 67,
+        "bmi": 26.5,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "64ca461c-d587-4cee-94f9-fe563bea7eaa",
+          "measuredAt": "2026-07-06T11:45:00+05:00",
+          "gestationalWeeks": 10,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 113,
+              "diastolic": 68,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 125,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.8,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "ba2573c0-e4a6-433d-9f52-8781c72b7921",
+          "measuredAt": "2026-09-08T12:02:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 107,
+              "diastolic": 65,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "91f25241-7132-4547-9ef0-90d975dd856f",
+          "measuredAt": "2026-10-26T12:09:00+05:00",
+          "gestationalWeeks": 26,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 109,
+              "diastolic": 63,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 112,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 7.3,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 5.7,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0009",
+      "displayName": "Sevara Xolmatova",
+      "dateOfBirth": "1996-04-14",
+      "region": "Farg'ona viloyati",
+      "district": "Quva tumani",
+      "facility": "Quva tumani 3-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-01-16",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [],
+        "parity": 3,
+        "heightCm": 166,
+        "prePregnancyWeightKg": 55,
+        "bmi": 20,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "MODERATE",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "982f5a9d-6a1d-41d9-9639-dcc297c49f03",
+          "measuredAt": "2026-06-20T12:39:00+05:00",
+          "gestationalWeeks": 10,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 112,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 125,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.4,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.06,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "b0a06e8c-4f16-4952-ba74-33eaf48b7b03",
+          "measuredAt": "2026-08-23T11:53:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 114,
+              "diastolic": 61,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "2e65eb11-59e2-4674-b7ed-c4c1b9ade43a",
+          "measuredAt": "2026-10-12T10:24:00+05:00",
+          "gestationalWeeks": 26.3,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 113,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 112,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.7,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.8,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.9,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "12ade887-de19-44ec-be1e-947ca22ec1f2",
+          "measuredAt": "2026-11-06T09:59:00+05:00",
+          "gestationalWeeks": 29.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 116,
+              "diastolic": 69,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0010",
+      "displayName": "Kamola Qodirova",
+      "dateOfBirth": "2000-06-18",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-01-05",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "UTERINE_SCAR"
+        ],
+        "parity": 0,
+        "heightCm": 168,
+        "prePregnancyWeightKg": 61,
+        "bmi": 21.6,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "HIGH",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "d26fe22a-ebf7-40cc-a42d-ccef3d1c4dce",
+          "measuredAt": "2026-06-10T09:18:00+05:00",
+          "gestationalWeeks": 10.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 104,
+              "diastolic": 67,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 120,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.2,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "e1c6e317-e274-4237-b76d-41bfef662fc0",
+          "measuredAt": "2026-08-12T11:40:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 109,
+              "diastolic": 61,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "001c16d3-7ff0-455b-8487-33f6c302f1fa",
+          "measuredAt": "2026-10-01T12:31:00+05:00",
+          "gestationalWeeks": 26.3,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 111,
+              "diastolic": 71,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 116,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 8.5,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "6affac88-0941-487b-9add-fba3fb3668ae",
+          "measuredAt": "2026-10-26T10:38:00+05:00",
+          "gestationalWeeks": 29.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 114,
+              "diastolic": 70,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0011",
+      "displayName": "Mohira Mirzayeva",
+      "dateOfBirth": "1993-09-29",
+      "region": "Toshkent viloyati",
+      "district": "Qibray tumani",
+      "facility": "Qibray tumani 1-son oilaviy poliklinika",
+      "estimatedDueDate": "2026-12-20",
+      "assignedUserRef": "u-doctor-2",
+      "riskFactors": {
+        "flags": [],
+        "parity": 2,
+        "heightCm": 163,
+        "prePregnancyWeightKg": 58,
+        "bmi": 21.8,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "a76603a8-aa14-49d9-b391-3d3344605734",
+          "measuredAt": "2026-05-26T10:52:00+05:00",
+          "gestationalWeeks": 10.3,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 116,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 127,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.6,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.05,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "22a179f6-43a5-44c0-8d0e-7835fb478228",
+          "measuredAt": "2026-07-25T12:47:00+05:00",
+          "gestationalWeeks": 18.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 104,
+              "diastolic": 62,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "ff284cbb-3804-4dea-baff-893f7fa0e679",
+          "measuredAt": "2026-09-14T09:40:00+05:00",
+          "gestationalWeeks": 26.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 105,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 117,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.4,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.8,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.7,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.03,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "02dee964-3768-4b6e-a310-f65babfaab10",
+          "measuredAt": "2026-10-13T09:35:00+05:00",
+          "gestationalWeeks": 30.3,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 113,
+              "diastolic": 72,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "8a38b417-fe76-4bb0-a96c-4a5fa686672a",
+          "measuredAt": "2026-11-08T12:05:00+05:00",
+          "gestationalWeeks": 34,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 109,
+              "diastolic": 72,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0012",
+      "displayName": "Dildora Aliyeva",
+      "dateOfBirth": "2002-10-18",
+      "region": "Farg'ona viloyati",
+      "district": "Quva tumani",
+      "facility": "Quva tumani 3-son oilaviy poliklinika",
+      "estimatedDueDate": "2026-12-08",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "SMOKING"
+        ],
+        "parity": 3,
+        "heightCm": 165,
+        "prePregnancyWeightKg": 58,
+        "bmi": 21.3,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "MODERATE",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "e76d482a-d8a3-40fe-a0ff-ac5280116ad4",
+          "measuredAt": "2026-05-12T11:41:00+05:00",
+          "gestationalWeeks": 10,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 113,
+              "diastolic": 67,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 125,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.2,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "5a13fcb3-4664-4c00-ad12-35db582127bd",
+          "measuredAt": "2026-07-14T11:39:00+05:00",
+          "gestationalWeeks": 19,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 115,
+              "diastolic": 67,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "6486f24a-122b-4dcd-abb5-af9bc62eb078",
+          "measuredAt": "2026-09-01T12:59:00+05:00",
+          "gestationalWeeks": 26,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 111,
+              "diastolic": 68,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 114,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.8,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 5.7,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "899b4732-be4e-410b-8941-d6cf95cd6657",
+          "measuredAt": "2026-09-30T12:11:00+05:00",
+          "gestationalWeeks": 30.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 107,
+              "diastolic": 68,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "7b801996-3481-4c6e-9acd-8837f4ec366f",
+          "measuredAt": "2026-10-26T09:47:00+05:00",
+          "gestationalWeeks": 33.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 104,
+              "diastolic": 68,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "351303d1-c6ab-4a8d-b03c-6d68cac67048",
+          "measuredAt": "2026-11-11T10:47:00+05:00",
+          "gestationalWeeks": 36.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 119,
+              "diastolic": 75,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0013",
+      "displayName": "Munisa Usmonova",
+      "dateOfBirth": "1994-02-01",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2026-11-24",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [],
+        "parity": 0,
+        "heightCm": 166,
+        "prePregnancyWeightKg": 70,
+        "bmi": 25.4,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NORMAL",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "a9762913-8bd9-4ca3-a1d9-6a37f0b9ada6",
+          "measuredAt": "2026-04-29T09:16:00+05:00",
+          "gestationalWeeks": 10.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 110,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 126,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.3,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "4e57598d-0629-457c-bb36-e8b7e82b4935",
+          "measuredAt": "2026-07-01T09:31:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 110,
+              "diastolic": 67,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "809188aa-d249-45ce-9c23-00aa3857b9e8",
+          "measuredAt": "2026-08-19T09:01:00+05:00",
+          "gestationalWeeks": 26.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 109,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 117,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.2,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 7.4,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 5.5,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "f979331b-5a54-4f3b-9f46-561924feb6c6",
+          "measuredAt": "2026-09-16T11:30:00+05:00",
+          "gestationalWeeks": 30.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 109,
+              "diastolic": 67,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "9a3bed3c-0d10-4918-a607-38396a405bb2",
+          "measuredAt": "2026-10-14T10:11:00+05:00",
+          "gestationalWeeks": 34.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 116,
+              "diastolic": 72,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "ad9f5388-d4a2-4def-85b3-f2cbf2cc25bb",
+          "measuredAt": "2026-10-26T12:56:00+05:00",
+          "gestationalWeeks": 35.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 117,
+              "diastolic": 68,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "079dd12b-f0c2-4be2-b444-f925faa171d2",
+          "measuredAt": "2026-11-11T10:04:00+05:00",
+          "gestationalWeeks": 38.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 113,
+              "diastolic": 70,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0014",
+      "displayName": "Sarvinoz Sobirova",
+      "dateOfBirth": "1999-04-01",
+      "region": "Farg'ona viloyati",
+      "district": "Quva tumani",
+      "facility": "Quva tumani 3-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-01-05",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [],
+        "parity": 2,
+        "heightCm": 158,
+        "prePregnancyWeightKg": 60,
+        "bmi": 24,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "STALE",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": "Пропущены визиты 26 и 30 нед: ожидаются MISS-BP-LATE, MISS-HB-26W, MISS-OGTT → «Green · неполные данные»",
+      "visits": [
+        {
+          "submissionId": "89934c15-f019-42d4-bb90-aba8c80727d4",
+          "measuredAt": "2026-06-09T10:21:00+05:00",
+          "gestationalWeeks": 10,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 108,
+              "diastolic": 75,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 127,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "7c46c758-0fdd-4df2-a922-a9be18fd21af",
+          "measuredAt": "2026-08-10T10:29:00+05:00",
+          "gestationalWeeks": 18.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 112,
+              "diastolic": 66,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0015",
+      "displayName": "Mavluda Jo'rayeva",
+      "dateOfBirth": "2002-09-02",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-03-22",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [],
+        "parity": 1,
+        "heightCm": 160,
+        "prePregnancyWeightKg": 55,
+        "bmi": 21.5,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "MILD_ANEMIA",
+      "expectedZone": "YELLOW",
+      "expectedRuleIds": [
+        "HB-MILD-T2"
+      ],
+      "expectedDynamicRules": "При ≥2 значениях Hb с интервалом ≥14 дней без роста на 10 г/л — TR-HB-NORESPONSE",
+      "visits": [
+        {
+          "submissionId": "0268757d-7b8b-40e6-ae15-e773d6166c67",
+          "measuredAt": "2026-08-23T10:08:00+05:00",
+          "gestationalWeeks": 9.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 117,
+              "diastolic": 68,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 113,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.8,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "fea0b305-8ac9-4016-8acc-1295b7c0a945",
+          "measuredAt": "2026-10-27T12:39:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 110,
+              "diastolic": 72,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 101,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0016",
+      "displayName": "Lola Hamidova",
+      "dateOfBirth": "1995-03-08",
+      "region": "Toshkent viloyati",
+      "district": "Qibray tumani",
+      "facility": "Qibray tumani 1-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-02-06",
+      "assignedUserRef": "u-doctor-2",
+      "riskFactors": {
+        "flags": [
+          "UTERINE_SCAR"
+        ],
+        "parity": 3,
+        "heightCm": 155,
+        "prePregnancyWeightKg": 58,
+        "bmi": 24.1,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "MODERATE",
+        "PPH": "HIGH",
+        "FGR": "LOW"
+      },
+      "scenario": "MILD_ANEMIA",
+      "expectedZone": "YELLOW",
+      "expectedRuleIds": [
+        "HB-MILD-T2"
+      ],
+      "expectedDynamicRules": "При ≥2 значениях Hb с интервалом ≥14 дней без роста на 10 г/л — TR-HB-NORESPONSE",
+      "visits": [
+        {
+          "submissionId": "e4af7744-f60b-40eb-b919-e8d28bd303b2",
+          "measuredAt": "2026-07-13T10:01:00+05:00",
+          "gestationalWeeks": 10.3,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 119,
+              "diastolic": 73,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 113,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.8,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "187b19cf-7e6b-4493-b2be-033022c578ab",
+          "measuredAt": "2026-09-12T10:06:00+05:00",
+          "gestationalWeeks": 19,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 101,
+              "diastolic": 62,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 101,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "ce3f7526-41d4-4a50-b812-53a8cad23a57",
+          "measuredAt": "2026-10-30T10:19:00+05:00",
+          "gestationalWeeks": 25.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 105,
+              "diastolic": 71,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 101,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.6,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 7.7,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 5.6,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.05,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0017",
+      "displayName": "Umida Ismoilova",
+      "dateOfBirth": "1997-04-03",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-02-02",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "PREGNANCY_INTERVAL_UNDER_6_OR_OVER_60_MONTHS"
+        ],
+        "parity": 3,
+        "heightCm": 157,
+        "prePregnancyWeightKg": 54,
+        "bmi": 21.9,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "MODERATE",
+        "PPH": "HIGH",
+        "FGR": "LOW"
+      },
+      "scenario": "MODERATE_ANEMIA_NO_RESPONSE",
+      "expectedZone": "YELLOW",
+      "expectedRuleIds": [
+        "HB-MOD",
+        "HB-MILD-T3"
+      ],
+      "expectedDynamicRules": "Hb 88 → 89 за 14 дней: TR-HB-NORESPONSE",
+      "visits": [
+        {
+          "submissionId": "c8d4fb82-e1de-4ee4-bdfe-39e971275b14",
+          "measuredAt": "2026-07-07T11:17:00+05:00",
+          "gestationalWeeks": 10,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 116,
+              "diastolic": 72,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 108,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.7,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.08,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "7ee4fe22-4c4a-4d10-9d5c-c85036afc0b9",
+          "measuredAt": "2026-09-09T10:04:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 116,
+              "diastolic": 68,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 98,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "5c80e716-5a8d-4401-8579-8d433c835496",
+          "measuredAt": "2026-10-25T11:49:00+05:00",
+          "gestationalWeeks": 25.7,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 105,
+              "diastolic": 66,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 88,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.4,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.7,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.6,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "1a1fcb10-7aff-492f-a31f-5fe740e6a8ef",
+          "measuredAt": "2026-11-12T10:27:00+05:00",
+          "gestationalWeeks": 28.3,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 107,
+              "diastolic": 68,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 89,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0018",
+      "displayName": "Yulduz Murodova",
+      "dateOfBirth": "1992-03-01",
+      "region": "Toshkent viloyati",
+      "district": "Qibray tumani",
+      "facility": "Qibray tumani 1-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-01-20",
+      "assignedUserRef": "u-doctor-2",
+      "riskFactors": {
+        "flags": [
+          "PREVIOUS_GDM"
+        ],
+        "parity": 2,
+        "heightCm": 160,
+        "prePregnancyWeightKg": 82,
+        "bmi": 32,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "HIGH",
+        "VTE": "MODERATE",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "GDM",
+      "expectedZone": "YELLOW",
+      "expectedRuleIds": [
+        "GLU-F-GDM",
+        "GLU-1H-GDM",
+        "GLU-2H-GDM"
+      ],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "a5a3320b-8537-409c-acc6-70cf80783c86",
+          "measuredAt": "2026-06-23T10:40:00+05:00",
+          "gestationalWeeks": 9.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 105,
+              "diastolic": 74,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 120,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 5.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "2483407d-1807-44ce-9fdb-8c040794950c",
+          "measuredAt": "2026-08-27T10:53:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 104,
+              "diastolic": 64,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "7b53a056-d6d9-4869-88f0-9b36cde6a2fd",
+          "measuredAt": "2026-10-15T12:10:00+05:00",
+          "gestationalWeeks": 26.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 104,
+              "diastolic": 69,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 114,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 5.4,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 10.5,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 9.2,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "59465f5b-5ad0-4c58-8566-975ab4abe96c",
+          "measuredAt": "2026-11-12T09:24:00+05:00",
+          "gestationalWeeks": 30.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 110,
+              "diastolic": 75,
+              "unit": "mmHg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0019",
+      "displayName": "Barno Sultonova",
+      "dateOfBirth": "1988-10-24",
+      "region": "Farg'ona viloyati",
+      "district": "Quva tumani",
+      "facility": "Quva tumani 3-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-02-14",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "FAMILY_HISTORY_DIABETES"
+        ],
+        "parity": 1,
+        "heightCm": 162,
+        "prePregnancyWeightKg": 84,
+        "bmi": 32,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "HIGH",
+        "VTE": "MODERATE",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "GDM",
+      "expectedZone": "YELLOW",
+      "expectedRuleIds": [
+        "GLU-F-GDM",
+        "GLU-1H-GDM",
+        "GLU-2H-GDM"
+      ],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "3d54fb26-ab05-4cb2-bb4b-34330529b90f",
+          "measuredAt": "2026-07-19T09:46:00+05:00",
+          "gestationalWeeks": 10,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 118,
+              "diastolic": 68,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 123,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 5.4,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "86462731-63fd-41fa-8ea8-246eb5c6c811",
+          "measuredAt": "2026-09-19T11:31:00+05:00",
+          "gestationalWeeks": 18.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 106,
+              "diastolic": 72,
+              "unit": "mmHg"
+            }
+          ]
+        },
+        {
+          "submissionId": "7f1c596b-3db7-4c2b-b262-b3a59e98611b",
+          "measuredAt": "2026-11-09T09:37:00+05:00",
+          "gestationalWeeks": 26.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 111,
+              "diastolic": 65,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 115,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 5.4,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 10.2,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 9.2,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0020",
+      "displayName": "Nargiza Valiyeva",
+      "dateOfBirth": "2003-07-31",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-01-03",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "FAMILY_HISTORY_PREECLAMPSIA"
+        ],
+        "parity": 0,
+        "heightCm": 163,
+        "prePregnancyWeightKg": 66,
+        "bmi": 24.8,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "HIGH",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "GEST_HTN",
+      "expectedZone": "YELLOW",
+      "expectedRuleIds": [
+        "BP-HTN-SYS",
+        "BP-HTN-DIA"
+      ],
+      "expectedDynamicRules": "Рост систолического ≥15 от исходного: TR-BP-RISE; разовое ≥140/90 — нужен повтор через 4 ч",
+      "visits": [
+        {
+          "submissionId": "69134a1a-0e30-441a-9fd2-7747d89e6c31",
+          "measuredAt": "2026-06-08T12:33:00+05:00",
+          "gestationalWeeks": 10.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 114,
+              "diastolic": 74,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 120,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.08,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "a599ae7e-0d91-406d-b3b4-b2bb90c17329",
+          "measuredAt": "2026-08-10T10:42:00+05:00",
+          "gestationalWeeks": 19.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 117,
+              "diastolic": 76,
+              "unit": "mmHg"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "76f4bd14-ca03-4a9c-afaf-302cbe064c1d",
+          "measuredAt": "2026-09-28T09:52:00+05:00",
+          "gestationalWeeks": 26.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 122,
+              "diastolic": 79,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 112,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.7,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.9,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 7.2,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "2f387cc4-0090-4be4-bc35-69ad99b2aabb",
+          "measuredAt": "2026-10-24T10:43:00+05:00",
+          "gestationalWeeks": 29.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 133,
+              "diastolic": 84,
+              "unit": "mmHg"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "b7d1bf3b-4e87-4cd7-8825-ccbaa93ad46c",
+          "measuredAt": "2026-11-07T12:34:00+05:00",
+          "gestationalWeeks": 31.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 144,
+              "diastolic": 93,
+              "unit": "mmHg"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0021",
+      "displayName": "Ozoda Zokirova",
+      "dateOfBirth": "1993-06-27",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-01-09",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "PREVIOUS_HYPERTENSION_IN_PREGNANCY"
+        ],
+        "parity": 1,
+        "heightCm": 158,
+        "prePregnancyWeightKg": 70,
+        "bmi": 28,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "HIGH",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "SEVERE_PE",
+      "expectedZone": "RED",
+      "expectedRuleIds": [
+        "BP-SEV-SYS",
+        "PE-BP-PROT",
+        "PE-BPD-PROT",
+        "BP-HTN-SYS",
+        "BP-HTN-DIA",
+        "PROT-01"
+      ],
+      "expectedDynamicRules": "Рост систолического: TR-BP-RISE",
+      "visits": [
+        {
+          "submissionId": "66ba128b-aadc-468f-81cd-46fe61725945",
+          "measuredAt": "2026-06-11T09:16:00+05:00",
+          "gestationalWeeks": 9.7,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 117,
+              "diastolic": 76,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 124,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.4,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.06,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "500f2314-41c2-4ee0-bac7-a82c66b5ef57",
+          "measuredAt": "2026-08-14T12:13:00+05:00",
+          "gestationalWeeks": 18.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 117,
+              "diastolic": 75,
+              "unit": "mmHg"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.05,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "e24e1fac-2605-4d9e-946e-7b763c52b372",
+          "measuredAt": "2026-10-01T09:27:00+05:00",
+          "gestationalWeeks": 25.7,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 125,
+              "diastolic": 80,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 115,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.6,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.5,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.1,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.03,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "42fca23a-a8db-406a-badb-cae2ae0fdc64",
+          "measuredAt": "2026-11-02T11:11:00+05:00",
+          "gestationalWeeks": 30.3,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 140,
+              "diastolic": 87,
+              "unit": "mmHg"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.12,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "a8075062-ff3e-46b3-a8eb-686cba55f6b0",
+          "measuredAt": "2026-11-15T11:57:00+05:00",
+          "gestationalWeeks": 32.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 163,
+              "diastolic": 109,
+              "unit": "mmHg"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 1,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0022",
+      "displayName": "Hilola Normatova",
+      "dateOfBirth": "1990-10-26",
+      "region": "Farg'ona viloyati",
+      "district": "Quva tumani",
+      "facility": "Quva tumani 3-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-01-20",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "PREGNANCY_INTERVAL_UNDER_6_OR_OVER_60_MONTHS"
+        ],
+        "parity": 4,
+        "heightCm": 154,
+        "prePregnancyWeightKg": 52,
+        "bmi": 21.9,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "MODERATE",
+        "PPH": "HIGH",
+        "FGR": "LOW"
+      },
+      "scenario": "SEVERE_ANEMIA",
+      "expectedZone": "RED",
+      "expectedRuleIds": [
+        "HB-SEV",
+        "HB-MOD",
+        "HB-MILD-T3"
+      ],
+      "expectedDynamicRules": "Падение Hb ≥10 г/л между визитами: TR-HB-DROP",
+      "visits": [
+        {
+          "submissionId": "a0eed974-cf31-4509-953a-743f62aeee64",
+          "measuredAt": "2026-06-23T10:31:00+05:00",
+          "gestationalWeeks": 9.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 111,
+              "diastolic": 74,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 104,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.6,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.03,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "eab2bcd3-1266-487f-9d9c-d2c4700d114a",
+          "measuredAt": "2026-08-25T11:12:00+05:00",
+          "gestationalWeeks": 18.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 105,
+              "diastolic": 71,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 92,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "15c5d38d-2611-4f01-aad6-b9abebcf6ea8",
+          "measuredAt": "2026-10-14T09:23:00+05:00",
+          "gestationalWeeks": 26,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 107,
+              "diastolic": 66,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 78,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 7.1,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.4,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "533bc989-e1bc-4eff-ae43-dc217ede64aa",
+          "measuredAt": "2026-10-29T11:43:00+05:00",
+          "gestationalWeeks": 28.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 115,
+              "diastolic": 70,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 72,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "5e49e688-fd71-48b0-aac9-1d5e7be52af1",
+          "measuredAt": "2026-11-12T10:39:00+05:00",
+          "gestationalWeeks": 30.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 108,
+              "diastolic": 74,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 66,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalReference": "OB-0023",
+      "displayName": "Rayhona Bakirova",
+      "dateOfBirth": "2004-08-20",
+      "region": "Toshkent viloyati",
+      "district": "Qibray tumani",
+      "facility": "Qibray tumani 1-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-06-22",
+      "assignedUserRef": "u-doctor-2",
+      "riskFactors": {
+        "flags": [],
+        "parity": 0,
+        "heightCm": 161,
+        "prePregnancyWeightKg": 54,
+        "bmi": 20.8,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "LOW",
+        "FGR": "LOW"
+      },
+      "scenario": "NO_DATA",
+      "expectedZone": null,
+      "expectedRuleIds": [],
+      "expectedDynamicRules": "Нет измерений: зона «Не оценено», не зелёная",
+      "visits": []
+    },
+    {
+      "externalReference": "OB-0024",
+      "displayName": "Sabina Raxmonova",
+      "dateOfBirth": "1996-04-29",
+      "region": "Farg'ona viloyati",
+      "district": "Quva tumani",
+      "facility": "Quva tumani 3-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-05-02",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [
+          "UTERINE_SCAR"
+        ],
+        "parity": 2,
+        "heightCm": 156,
+        "prePregnancyWeightKg": 63,
+        "bmi": 25.9,
+        "rhNegative": true
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "LOW",
+        "GDM": "LOW",
+        "VTE": "LOW",
+        "PPH": "HIGH",
+        "FGR": "LOW"
+      },
+      "scenario": "NO_DATA",
+      "expectedZone": null,
+      "expectedRuleIds": [],
+      "expectedDynamicRules": "Нет измерений: зона «Не оценено», не зелёная",
+      "visits": []
+    },
+    {
+      "externalReference": "OB-0025",
+      "displayName": "Gulbahor Fayzullayeva",
+      "dateOfBirth": "1986-05-11",
+      "region": "Samarqand viloyati",
+      "district": "Ishtixon tumani",
+      "facility": "Ishtixon tumani 2-son oilaviy poliklinika",
+      "estimatedDueDate": "2027-01-11",
+      "assignedUserRef": "u-doctor-1",
+      "riskFactors": {
+        "flags": [],
+        "parity": 0,
+        "heightCm": 159,
+        "prePregnancyWeightKg": 64,
+        "bmi": 25.3,
+        "rhNegative": false
+      },
+      "riskGroups": {
+        "PREECLAMPSIA": "HIGH",
+        "GDM": "HIGH",
+        "VTE": "MODERATE",
+        "PPH": "LOW",
+        "FGR": "HIGH"
+      },
+      "scenario": "DEMO",
+      "expectedZone": "GREEN",
+      "expectedRuleIds": [],
+      "expectedDynamicRules": null,
+      "visits": [
+        {
+          "submissionId": "ec767393-4979-4910-9eac-b3881e50b9f1",
+          "measuredAt": "2026-06-13T09:48:00+05:00",
+          "gestationalWeeks": 9.7,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 118,
+              "diastolic": 73,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 124,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.6,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.03,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "00c86821-aecf-4c78-b067-4c0eab63c9a5",
+          "measuredAt": "2026-08-15T10:18:00+05:00",
+          "gestationalWeeks": 18.7,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 112,
+              "diastolic": 71,
+              "unit": "mmHg"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.03,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "f26f5d6a-29e1-4ad8-9537-a0c5c89a4e25",
+          "measuredAt": "2026-10-04T11:25:00+05:00",
+          "gestationalWeeks": 25.9,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 111,
+              "diastolic": 74,
+              "unit": "mmHg"
+            },
+            {
+              "type": "HEMOGLOBIN",
+              "value": 118,
+              "unit": "g/L"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 4.5,
+              "unit": "mmol/L",
+              "context": "FASTING"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 8,
+              "unit": "mmol/L",
+              "context": "OGTT_1H"
+            },
+            {
+              "type": "GLUCOSE",
+              "value": 6.5,
+              "unit": "mmol/L",
+              "context": "OGTT_2H"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0.09,
+              "unit": "g/L"
+            }
+          ]
+        },
+        {
+          "submissionId": "3743ecdf-a9eb-43e4-a66e-fe6877669b2f",
+          "measuredAt": "2026-11-03T11:08:00+05:00",
+          "gestationalWeeks": 30.1,
+          "measurements": [
+            {
+              "type": "BLOOD_PRESSURE",
+              "systolic": 115,
+              "diastolic": 73,
+              "unit": "mmHg"
+            },
+            {
+              "type": "PROTEINURIA",
+              "value": 0,
+              "unit": "g/L"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "demoScenario": {
+    "patientRef": "OB-0025",
+    "story": "Пациентка группы высокого риска ПЭ (40 лет, первородящая) с ровной зелёной историей. Новое измерение на демо переводит её в красную зону и создаёт алерт специалисту.",
+    "measuredAt": "2026-11-18T10:30:00+05:00",
+    "gestationalWeeks": 32.3,
+    "measurements": [
+      {
+        "type": "BLOOD_PRESSURE",
+        "systolic": 164,
+        "diastolic": 112,
+        "unit": "mmHg"
+      },
+      {
+        "type": "PROTEINURIA",
+        "value": 0.6,
+        "unit": "g/L"
+      }
+    ],
+    "expectedZone": "RED",
+    "expectedRuleIds": [
+      "BP-SEV-SYS",
+      "BP-SEV-DIA",
+      "PE-BP-PROT",
+      "PE-BPD-PROT",
+      "BP-HTN-SYS",
+      "BP-HTN-DIA",
+      "PROT-01"
+    ],
+    "alternativeYellowMeasurements": [
+      {
+        "type": "BLOOD_PRESSURE",
+        "systolic": 146,
+        "diastolic": 92,
+        "unit": "mmHg"
+      }
+    ]
+  }
+}
