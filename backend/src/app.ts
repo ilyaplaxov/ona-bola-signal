@@ -15,6 +15,7 @@ import { referralsRouter } from "./routes/referrals.routes";
 import { attachmentsRouter } from "./routes/attachments.routes";
 import { publicSignalRouter, signalsRouter } from "./routes/signals.routes";
 import { assertAttachmentsOfPatient } from "./services/attachment.service";
+import type { DimedMode } from "./services/dimed.service";
 import { DEMO_PASSWORD } from "./scripts/seed-data";
 import { DEFAULT_UPLOADS_DIR } from "./config";
 
@@ -30,6 +31,8 @@ export interface AppDeps {
   ai?: AiService | null;
   /** The Telegram bot's @username once known; absent or null without a bot. */
   botUsername?: () => string | null;
+  /** DIMED integration mode for the status endpoints (the sender itself runs in server.ts). Default STUB. */
+  dimedMode?: DimedMode;
   /** Where uploaded files are stored. Tests pass a temporary folder. */
   uploadsDir?: string;
   /** Sign-in settings. Defaults (for tests): demo header accepted, demo accounts listed, plain cookies. */
@@ -87,7 +90,10 @@ export function createApp(deps: AppDeps): express.Express {
     "/api",
     signalsRouter({ db: deps.db, clock, botUsername: deps.botUsername ?? (() => null) }),
   );
-  app.use("/api", attachmentsRouter({ db: deps.db, clock, store }));
+  app.use(
+    "/api",
+    attachmentsRouter({ db: deps.db, clock, store, dimedMode: deps.dimedMode ?? "STUB" }),
+  );
 
   app.use("/api", notFound);
   app.use(errorHandler);

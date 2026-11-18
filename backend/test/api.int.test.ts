@@ -28,6 +28,7 @@ import {
   RedeemSignalCodeResponse,
   SIGNAL_TEXTS,
   AnalyzeDocumentResponse,
+  DimedStatusResponse,
   type NoteExtractionOutput,
 } from "@ona-bola/shared";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -57,6 +58,11 @@ import {
 import { seedId } from "../src/scripts/seed-ids";
 import { seedDatabase } from "../src/scripts/seed";
 import { createBotHandler, type TelegramApi } from "../src/telegram/bot";
+import {
+  processDimedOutbox,
+  stubDimedClient,
+  type DimedClient,
+} from "../src/services/dimed.service";
 
 // Runs against the separate test database (never the demo one). Skipped when it is not reachable,
 // for example when Docker is not running. Keep every database test in this one file: the suite
@@ -1562,6 +1568,85 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
         .set(as("doctor-chilonzor"))
         .send({});
       expect(noAi.status).toBe(503);
+    });
+  });
+
+  describe("DIMED outbox (stub)", () => {
+    const as = (key: string) => ({ "x-demo-user-id": userId(key) });
+    const status = async () =>
+      DimedStatusResponse.parse(
+        (await request(app).get(`/api/patients/${demoId}/dimed`).set(as("doctor-chilonzor"))).body,
+      );
+
+    it("queues visits, files and conclusions written earlier, and the stub receives them", async () => {
+      const before = await status();
+      expect(before.mode).toBe("STUB");
+      const types = new Set(before.items.map((i) => i.recordType));
+      expect([...types].sort()).toEqual(["ATTACHMENT", "REFERRAL", "VISIT"]);
+      expect(before.items.every((i) => i.status === "PENDING")).toBe(true);
+
+      const result = await processDimedOutbox(db, stubDimedClient, NOW, 500);
+      expect(result.failed).toBe(0);
+      expect(result.sent).toBeGreaterThanOrEqual(before.items.length);
+      const after = await status();
+      expect(after.items.every((i) => i.status === "SENT" && i.attempts === 1)).toBe(true);
+
+      const files = AttachmentListResponse.parse(
+        (await request(app).get(`/api/patients/${demoId}/attachments`).set(as("doctor-chilonzor")))
+          .body,
+      );
+      expect(files.items.every((f) => f.dimedStatus === "SENT")).toBe(true);
+    });
+
+    it("marks a failed delivery, retries it later and audits both", async () => {
+      const visit = await request(app)
+        .post(`/api/patients/${demoId}/measurements`)
+        .set(as("nurse-chilonzor"))
+        .send({
+          submissionId: seedId("dimed-visit"),
+          measuredAt: NOW.toISOString(),
+          measurements: [{ type: "HEMOGLOBIN", value: 118, unit: "g/L" }],
+        });
+      expect(visit.status).toBe(201);
+      const failing: DimedClient = {
+        mode: "STUB",
+        send: () => Promise.reject(new Error("DIMED stub: 503")),
+      };
+      expect(await processDimedOutbox(db, failing, NOW)).toEqual({ sent: 0, failed: 1 });
+      const failed = (await status()).items.find((i) => i.recordId === seedId("dimed-visit"))!;
+      expect(failed).toMatchObject({ status: "FAILED", attempts: 1, lastError: "DIMED stub: 503" });
+
+      // Not due again until the back-off passes.
+      expect(await processDimedOutbox(db, stubDimedClient, NOW)).toEqual({ sent: 0, failed: 0 });
+      const later = new Date(NOW.getTime() + 60_000);
+      expect(await processDimedOutbox(db, stubDimedClient, later)).toEqual({ sent: 1, failed: 0 });
+
+      const audit = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?entityType=DIMED_OUTBOX&patientId=${demoId}&limit=200`))
+          .body,
+      );
+      expect(audit.items.some((e) => e.action === "DIMED_FAILED")).toBe(true);
+      expect(audit.items.some((e) => e.action === "DIMED_SENT")).toBe(true);
+    });
+
+    it("hides the statuses when the integration is off", async () => {
+      const off = createApp({
+        pingDb: () => pingDatabase(pool),
+        db,
+        ruleSet: DEMO_RULE_SET,
+        clock: () => NOW,
+        uploadsDir,
+        dimedMode: "OFF",
+      });
+      const res = DimedStatusResponse.parse(
+        (await request(off).get(`/api/patients/${demoId}/dimed`).set(as("doctor-chilonzor"))).body,
+      );
+      expect(res.mode).toBe("OFF");
+      const files = AttachmentListResponse.parse(
+        (await request(off).get(`/api/patients/${demoId}/attachments`).set(as("doctor-chilonzor")))
+          .body,
+      );
+      expect(files.items[0]?.dimedStatus).toBeUndefined();
     });
   });
 });

@@ -2,6 +2,8 @@ import type {
   AssessmentReason,
   AttachmentContentType,
   AttachmentKind,
+  DimedRecordType,
+  DimedSyncStatus,
   Language,
   SignalChannel,
   SignalKind,
@@ -339,5 +341,33 @@ export const patientSignals = pgTable(
   (t) => [
     index("patient_signals_status_idx").on(t.status, t.createdAt),
     index("patient_signals_patient_idx").on(t.patientId),
+  ],
+);
+
+/**
+ * Outbox of records for DIMED (mentor items 1, 8). Written in the same transaction as the record,
+ * so nothing is lost; a sender delivers each row and records the result. No payload is stored: the
+ * sender builds it from the record when it sends.
+ */
+export const dimedOutbox = pgTable(
+  "dimed_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    recordType: text("record_type").$type<DimedRecordType>().notNull(),
+    recordId: text("record_id").notNull(),
+    status: text("status").$type<DimedSyncStatus>().notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("dimed_outbox_due_idx").on(t.status, t.nextAttemptAt),
+    index("dimed_outbox_patient_idx").on(t.patientId, t.createdAt),
+    uniqueIndex("dimed_outbox_record_idx").on(t.recordType, t.recordId),
   ],
 );

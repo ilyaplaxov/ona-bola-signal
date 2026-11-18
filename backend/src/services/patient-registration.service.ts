@@ -16,6 +16,7 @@ import { patients, riskAssessments, users } from "../db/schema";
 import { HttpError } from "../http-error";
 import { assess, type RuleSet } from "../risk-engine";
 import { recordAudit } from "./audit.service";
+import { enqueueForDimed } from "./dimed.service";
 import { getPatient } from "./patient.service";
 import { buildEngineInput, recordAssessment } from "./risk-assessment.service";
 
@@ -112,6 +113,12 @@ export async function createPatient(
         patientId: row.id,
         metadata: { source: "registry-form", datingMethod: dating.datingMethod },
         createdAt: now,
+      });
+      await enqueueForDimed(tx, {
+        patientId: row.id,
+        recordType: "PATIENT",
+        recordId: row.id,
+        now,
       });
       return row.id;
     });

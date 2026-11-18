@@ -12,6 +12,7 @@ import { alerts, auditLogs, measurements, patients, riskAssessments, users } fro
 import { HttpError } from "../http-error";
 import { assess, type RuleSet } from "../risk-engine";
 import { recordAudit } from "./audit.service";
+import { enqueueForDimed } from "./dimed.service";
 import { readingToRow, toAssessment, toMeasurement, toUserRef } from "./mappers";
 import { buildEngineInput, recordAssessment } from "./risk-assessment.service";
 
@@ -85,6 +86,12 @@ export async function submitMeasurements(
         patientId,
         metadata: { types: request.measurements.map((m) => m.type), source: request.source },
         createdAt: now,
+      });
+      await enqueueForDimed(tx, {
+        patientId,
+        recordType: "VISIT",
+        recordId: request.submissionId,
+        now,
       });
 
       const result = assess(await buildEngineInput(tx, patientId), ruleSet, now);

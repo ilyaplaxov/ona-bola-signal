@@ -7,6 +7,7 @@ import type { Database, DbExecutor } from "../db/client";
 import { attachments, referrals, users } from "../db/schema";
 import { HttpError } from "../http-error";
 import { recordAudit } from "./audit.service";
+import { enqueueForDimed } from "./dimed.service";
 import type { ActorContext } from "./auth.service";
 
 // Patient files (mentor items 5–7). The type is decided from the file's first bytes, not from what
@@ -125,6 +126,7 @@ export async function saveAttachment(
         },
         createdAt: now,
       });
+      await enqueueForDimed(tx, { patientId, recordType: "ATTACHMENT", recordId: row.id, now });
       return row.id;
     });
     return getAttachment(db, id);

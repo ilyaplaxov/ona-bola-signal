@@ -50,6 +50,13 @@
       "when": 1794992145711,
       "tag": "0006_patient_signals",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794992552392,
+      "tag": "0007_dimed_outbox",
+      "breakpoints": true
     }
   ]
 }

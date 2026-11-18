@@ -38,6 +38,11 @@ const EnvSchema = z.object({
    * Accept the old x-demo-user-id header besides the session cookie. Default: on, except in
    * production. Turn off once the frontend signs in through the login page.
    */
+  /**
+   * DIMED integration: "stub" queues records and delivers them to a local stand-in (the default
+   * until real access exists); "off" queues without sending and hides the statuses.
+   */
+  DIMED_MODE: z.enum(["off", "stub"]).default("stub"),
   /** Telegram bot token from @BotFather. Without it the bot stays off; the /signal page still works. */
   TELEGRAM_BOT_TOKEN: z.preprocess(emptyToUndefined, z.string().min(20).optional()),
   AUTH_DEMO_HEADER: z.preprocess(emptyToUndefined, z.stringbool().optional()),

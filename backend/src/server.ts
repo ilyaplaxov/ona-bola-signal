@@ -6,6 +6,7 @@ import { DEMO_PASSWORD } from "./scripts/seed-data";
 import { recordRuleSetLoaded } from "./services/audit.service";
 import { aiServiceFromConfig } from "./services/claude.service";
 import { createBotHandler, startPolling, telegramApi } from "./telegram/bot";
+import { startDimedSender, stubDimedClient } from "./services/dimed.service";
 
 loadEnvFile();
 const config = loadConfig();
@@ -15,6 +16,7 @@ const { ai, status: aiStatus } = aiServiceFromConfig(config);
 // Telegram bot: started after the API, only with a token. Its @username feeds the t.me links.
 let botUsername: string | null = null;
 let bot: { stop: () => void } | null = null;
+let dimed: { stop: () => void } | null = null;
 
 const app = createApp({
   botUsername: () => botUsername,
@@ -23,6 +25,7 @@ const app = createApp({
   ruleSet,
   ai,
   uploadsDir: config.UPLOADS_DIR,
+  dimedMode: config.DIMED_MODE === "stub" ? "STUB" : "OFF",
   auth: {
     allowDemoHeader: config.AUTH_DEMO_HEADER,
     secureCookies: config.NODE_ENV === "production",
@@ -41,6 +44,12 @@ const server = app.listen(config.API_PORT, (error?: Error) => {
   console.log(`Ona-Bola Signal API on http://localhost:${config.API_PORT}`);
   console.log(`Rule set ${ruleSet.version} (${ruleSet.kind}), ${ruleSet.rules.length} rules`);
   console.log(`AI features ${aiStatus}`);
+  if (config.DIMED_MODE === "stub") {
+    dimed = startDimedSender({ db, client: stubDimedClient });
+    console.log(
+      "DIMED: records are queued and delivered to the local stub (no real DIMED access yet)",
+    );
+  } else console.log("DIMED: off (records are queued, not sent)");
   if (config.TELEGRAM_BOT_TOKEN) void startBot(config.TELEGRAM_BOT_TOKEN);
   else console.log("Telegram bot off (no TELEGRAM_BOT_TOKEN); the /signal page still works");
   console.log(
@@ -73,6 +82,7 @@ async function startBot(token: string): Promise<void> {
 function shutdown(signal: NodeJS.Signals): void {
   console.log(`${signal} received, closing the API`);
   bot?.stop();
+  dimed?.stop();
   server.close(() => {
     void pool.end().finally(() => process.exit(0));
   });

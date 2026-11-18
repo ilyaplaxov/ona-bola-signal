@@ -4,6 +4,6 @@ import type { Database } from "./client";
 /** Deletes every row in every table. Only for local demo and test databases (see scripts/reset.ts). */
 export async function resetDatabase(db: Database): Promise<void> {
   await db.execute(
-    sql`TRUNCATE TABLE patient_signals, signal_bindings, signal_link_codes, attachments, referrals, audit_logs, alerts, risk_assessments, measurements, patients, sessions, users CASCADE`,
+    sql`TRUNCATE TABLE dimed_outbox, patient_signals, signal_bindings, signal_link_codes, attachments, referrals, audit_logs, alerts, risk_assessments, measurements, patients, sessions, users CASCADE`,
   );
 }

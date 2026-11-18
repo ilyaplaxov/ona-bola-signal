@@ -2,6 +2,7 @@ import {
   ATTACHMENT_MAX_BYTES,
   Attachment,
   AttachmentListResponse,
+  DimedStatusResponse,
   IdParams,
   UploadAttachmentFields,
 } from "@ona-bola/shared";
@@ -19,6 +20,11 @@ import {
   saveAttachment,
   type AttachmentStore,
 } from "../services/attachment.service";
+import {
+  dimedStatusByRecord,
+  dimedStatusForPatient,
+  type DimedMode,
+} from "../services/dimed.service";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -53,7 +59,18 @@ export function attachmentsRouter(deps: {
   db: Database;
   clock: () => Date;
   store: AttachmentStore;
+  dimedMode: DimedMode;
 }): Router {
+  /** Adds the DIMED delivery status unless the integration is off. */
+  async function withDimed(items: Attachment[]): Promise<Attachment[]> {
+    if (deps.dimedMode === "OFF") return items;
+    const status = await dimedStatusByRecord(
+      deps.db,
+      "ATTACHMENT",
+      items.map((a) => a.id),
+    );
+    return items.map((a) => ({ ...a, dimedStatus: status.get(a.id) ?? "PENDING" }));
+  }
   const router = Router();
 
   router.post("/patients/:id/attachments", async (req, res) => {
@@ -82,17 +99,25 @@ export function attachmentsRouter(deps: {
     sendJson(res, Attachment, attachment, 201);
   });
 
+  router.get("/patients/:id/dimed", async (req, res) => {
+    const { id } = parseInput(IdParams, req.params);
+    await assertPatientAccess(deps.db, getActorContext(res), id);
+    sendJson(res, DimedStatusResponse, await dimedStatusForPatient(deps.db, id, deps.dimedMode));
+  });
+
   router.get("/patients/:id/attachments", async (req, res) => {
     const { id } = parseInput(IdParams, req.params);
     await assertPatientAccess(deps.db, getActorContext(res), id);
-    sendJson(res, AttachmentListResponse, { items: await listAttachments(deps.db, id) });
+    const items = await withDimed(await listAttachments(deps.db, id));
+    sendJson(res, AttachmentListResponse, { items });
   });
 
   router.get("/attachments/:id", async (req, res) => {
     const { id } = parseInput(IdParams, req.params);
     const attachment = await getAttachment(deps.db, id);
     await assertPatientAccess(deps.db, getActorContext(res), attachment.patientId);
-    sendJson(res, Attachment, attachment);
+    const [withStatus] = await withDimed([attachment]);
+    sendJson(res, Attachment, withStatus ?? attachment);
   });
 
   router.get("/attachments/:id/file", async (req, res) => {

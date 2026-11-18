@@ -12,6 +12,7 @@ import { patients, referrals, users } from "../db/schema";
 import { HttpError } from "../http-error";
 import { visiblePatients } from "./access";
 import { recordAudit } from "./audit.service";
+import { enqueueForDimed } from "./dimed.service";
 import type { ActorContext } from "./auth.service";
 
 // Referral to a consultant (mentor item 3). The reason and the conclusion stay in the referrals
@@ -267,6 +268,14 @@ export async function actOnReferral(
       },
       createdAt: now,
     });
+    if (request.action === "CONCLUDE") {
+      await enqueueForDimed(tx, {
+        patientId: r.patientId,
+        recordType: "REFERRAL",
+        recordId: referralId,
+        now,
+      });
+    }
   });
   return getReferral(db, referralId);
 }
