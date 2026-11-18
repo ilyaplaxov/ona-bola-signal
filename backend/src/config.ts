@@ -29,9 +29,20 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   CLAUDE_MODEL: z.string().min(1).default("claude-opus-5-5"),
   CLAUDE_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
+  /**
+   * Accept the old x-demo-user-id header besides the session cookie. Default: on, except in
+   * production. Turn off once the frontend signs in through the login page.
+   */
+  AUTH_DEMO_HEADER: z.preprocess(emptyToUndefined, z.stringbool().optional()),
+  /** List the seeded demo accounts and their password on the login page. Default: on, except in production. */
+  DEMO_ACCOUNTS: z.preprocess(emptyToUndefined, z.stringbool().optional()),
 });
 
-export type Config = z.infer<typeof EnvSchema>;
+type ParsedEnv = z.infer<typeof EnvSchema>;
+export type Config = Omit<ParsedEnv, "AUTH_DEMO_HEADER" | "DEMO_ACCOUNTS"> & {
+  AUTH_DEMO_HEADER: boolean;
+  DEMO_ACCOUNTS: boolean;
+};
 
 /** Validates the environment once at startup and fails with a readable message. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -39,5 +50,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!parsed.success) {
     throw new Error(`Invalid environment configuration:\n${z.prettifyError(parsed.error)}`);
   }
-  return parsed.data;
+  const notProduction = parsed.data.NODE_ENV !== "production";
+  return {
+    ...parsed.data,
+    AUTH_DEMO_HEADER: parsed.data.AUTH_DEMO_HEADER ?? notProduction,
+    DEMO_ACCOUNTS: parsed.data.DEMO_ACCOUNTS ?? notProduction,
+  };
 }

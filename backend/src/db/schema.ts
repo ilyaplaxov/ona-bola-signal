@@ -1,4 +1,10 @@
-import type { AssessmentReason, DataWarning, RiskFactors, TrendFinding } from "@ona-bola/shared";
+import type {
+  AssessmentReason,
+  DataWarning,
+  RiskFactors,
+  Specialty,
+  TrendFinding,
+} from "@ona-bola/shared";
 import {
   bigserial,
   date,
@@ -36,14 +42,36 @@ export const ruleSetKind = pgEnum("rule_set_kind", ["ILLUSTRATIVE", "VALIDATED"]
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
-/** Demo actors chosen with the role switcher. No passwords. */
+/** Staff accounts. username and passwordHash are null for accounts that cannot sign in. */
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   displayName: text("display_name").notNull(),
   role: userRole("role").notNull(),
   district: text("district"),
+  /** Lower-case login name. */
+  username: text("username").unique(),
+  /** scrypt$N$r$p$salt$hash (base64url); see services/password.ts. */
+  passwordHash: text("password_hash"),
+  /** Consultant specialty (shared Specialty); null for obstetric staff, the alert recipient, managers. */
+  specialty: text("specialty").$type<Specialty>(),
+  facility: text("facility"),
   createdAt: createdAt(),
 });
+
+/** Sign-in sessions. The cookie holds a random token; only its SHA-256 is stored. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    /** hex SHA-256 of the session token. */
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);
 
 export const patients = pgTable(
   "patients",

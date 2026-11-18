@@ -14,6 +14,9 @@ import {
   RuleSetInfo,
   SubmitMeasurementsResponse,
   UserListResponse,
+  DemoAccountsResponse,
+  SessionResponse,
+  SESSION_COOKIE,
   type NoteExtractionOutput,
 } from "@ona-bola/shared";
 import request from "supertest";
@@ -30,7 +33,13 @@ import {
   type ChatContext,
   type ExplanationFacts,
 } from "../src/services/claude.service";
-import { DEMO_PATIENT_REF, SEED_PATIENTS, SEED_USERS, userId } from "../src/scripts/seed-data";
+import {
+  DEMO_PASSWORD,
+  DEMO_PATIENT_REF,
+  SEED_PATIENTS,
+  SEED_USERS,
+  userId,
+} from "../src/scripts/seed-data";
 import { seedId } from "../src/scripts/seed-ids";
 import { seedDatabase } from "../src/scripts/seed";
 
@@ -766,6 +775,101 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       expect((await update(ob1, { displayName: "X" }, null)).status).toBe(401);
       expect((await update(seedId("nobody"), { displayName: "X" })).status).toBe(404);
       expect((await update(ob1, {})).status).toBe(400);
+    });
+  });
+
+  describe("sign-in (session cookie)", () => {
+    const login = (username: string, password: string) =>
+      request(app).post("/api/auth/login").send({ username, password });
+    const sessionCookie = (res: request.Response): string => {
+      const raw = res.headers["set-cookie"] as unknown as string[] | undefined;
+      const cookie = raw?.find((c) => c.startsWith(`${SESSION_COOKIE}=`));
+      if (!cookie) throw new Error("no session cookie");
+      return cookie;
+    };
+
+    it("lists the demo accounts with the shared password", async () => {
+      const body = DemoAccountsResponse.parse(
+        (await request(app).get("/api/auth/demo-accounts")).body,
+      );
+      expect(body.enabled).toBe(true);
+      expect(body.password).toBe(DEMO_PASSWORD);
+      expect(body.items).toHaveLength(SEED_USERS.length);
+      expect(body.items.find((u) => u.username === "yusupova")?.specialty).toBe("ENDOCRINOLOGIST");
+    });
+
+    it("rejects a wrong password with INVALID_CREDENTIALS and audits it without the username", async () => {
+      const res = await login("karimova", "wrong-password");
+      expect(res.status).toBe(401);
+      expect(ApiErrorBody.parse(res.body).error.code).toBe("INVALID_CREDENTIALS");
+      expect(res.headers["set-cookie"]).toBeUndefined();
+      expect((await login("nobody-here", DEMO_PASSWORD)).status).toBe(401);
+
+      const audit = AuditListResponse.parse(
+        (await request(app).get("/api/audit?entityType=USER&limit=10")).body,
+      );
+      const failed = audit.items.filter((e) => e.action === "USER_LOGIN_FAILED");
+      expect(failed.length).toBeGreaterThanOrEqual(2);
+      expect(JSON.stringify(failed)).not.toContain("nobody-here");
+    });
+
+    it("signs in with an httpOnly cookie, acts with it and signs out", async () => {
+      const res = await login(" Karimova ", DEMO_PASSWORD);
+      expect(res.status).toBe(200);
+      const session = SessionResponse.parse(res.body);
+      expect(session.user).toMatchObject({
+        username: "karimova",
+        role: "DOCTOR",
+        district: "Chilonzor",
+        facility: "Oilaviy poliklinika 12",
+      });
+      const cookie = sessionCookie(res);
+      expect(cookie).toMatch(/HttpOnly/i);
+      expect(cookie).toMatch(/SameSite=Lax/i);
+
+      const me = await request(app).get("/api/auth/me").set("Cookie", cookie.split(";")[0]!);
+      expect(me.status).toBe(200);
+      expect(SessionResponse.parse(me.body).user.id).toBe(userId("doctor-chilonzor"));
+
+      // The cookie is enough to write: the edit is audited under the signed-in doctor.
+      const edit = await request(app)
+        .patch(`/api/patients/${demoId}`)
+        .set("Cookie", cookie.split(";")[0]!)
+        .send({ facility: "Oilaviy poliklinika 12" });
+      expect(edit.status).toBe(200);
+
+      const out = await request(app).post("/api/auth/logout").set("Cookie", cookie.split(";")[0]!);
+      expect(out.status).toBe(200);
+      const after = await request(app).get("/api/auth/me").set("Cookie", cookie.split(";")[0]!);
+      expect(after.status).toBe(401);
+      expect(ApiErrorBody.parse(after.body).error.code).toBe("ACTOR_REQUIRED");
+    });
+
+    it("ignores the demo header when it is switched off", async () => {
+      const strict = createApp({
+        pingDb: () => pingDatabase(pool),
+        db,
+        ruleSet: DEMO_RULE_SET,
+        clock: () => NOW,
+        auth: { allowDemoHeader: false, demoAccounts: { enabled: false, password: null } },
+      });
+      const me = await request(strict).get("/api/auth/me").set("x-demo-user-id", userId("manager"));
+      expect(me.status).toBe(401);
+      const accounts = DemoAccountsResponse.parse(
+        (await request(strict).get("/api/auth/demo-accounts")).body,
+      );
+      expect(accounts).toEqual({ enabled: false, password: null, items: [] });
+    });
+
+    it("lets a session expire after its shift", async () => {
+      const cookie = sessionCookie(await login("saidova", DEMO_PASSWORD)).split(";")[0]!;
+      const later = createApp({
+        pingDb: () => pingDatabase(pool),
+        db,
+        ruleSet: DEMO_RULE_SET,
+        clock: () => new Date(NOW.getTime() + 13 * 3_600_000),
+      });
+      expect((await request(later).get("/api/auth/me").set("Cookie", cookie)).status).toBe(401);
     });
   });
 });

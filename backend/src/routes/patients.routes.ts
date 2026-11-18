@@ -10,7 +10,7 @@ import {
 } from "@ona-bola/shared";
 import { Router } from "express";
 import type { Database } from "../db/client";
-import { requireActor } from "../middleware/demo-actor";
+import { requireActor } from "../middleware/auth";
 import { parseInput, sendJson } from "../middleware/validate";
 import { deliverAlerts } from "../services/notification";
 import { createPatient, updatePatient } from "../services/patient-registration.service";

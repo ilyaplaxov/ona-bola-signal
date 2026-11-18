@@ -77,5 +77,7 @@ export async function listUsers(db: DbExecutor): Promise<User[]> {
     displayName: u.displayName,
     role: u.role,
     district: u.district,
+    specialty: u.specialty,
+    facility: u.facility,
   }));
 }

@@ -11,7 +11,7 @@ import {
 import { Router } from "express";
 import type { Database } from "../db/client";
 import { HttpError } from "../http-error";
-import { requireActor } from "../middleware/demo-actor";
+import { requireActor } from "../middleware/auth";
 import { parseInput, sendJson } from "../middleware/validate";
 import { recordAudit } from "../services/audit.service";
 import {

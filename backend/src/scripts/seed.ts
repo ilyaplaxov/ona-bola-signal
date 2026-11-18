@@ -10,7 +10,9 @@ import {
   recordAssessment,
   type PatientState,
 } from "../services/risk-assessment.service";
+import { hashPassword } from "../services/password";
 import {
+  DEMO_PASSWORD,
   districtOf,
   riskFactorsFor,
   SEED_PATIENTS,
@@ -60,12 +62,18 @@ export async function seedDatabase(
   now: Date,
 ): Promise<SeedSummary> {
   return db.transaction(async (tx) => {
+    // One hash for every demo account: they share DEMO_PASSWORD, and scrypt is slow on purpose.
+    const passwordHash = await hashPassword(DEMO_PASSWORD);
     await tx.insert(users).values(
       SEED_USERS.map((u) => ({
         id: userId(u.key),
         displayName: u.displayName,
         role: u.role,
         district: u.district,
+        username: u.username,
+        passwordHash,
+        specialty: u.specialty ?? null,
+        facility: u.facility ?? null,
       })),
     );
     // The rule set "loads" before the first patient is registered, so the audit trail reads in order.

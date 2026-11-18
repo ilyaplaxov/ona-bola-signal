@@ -31,3 +31,14 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ API_PORT: "not-a-port" })).toThrow(/API_PORT/);
   });
 });
+
+describe("sign-in settings", () => {
+  it("keeps the demo header and the demo accounts on outside production", () => {
+    expect(loadConfig({})).toMatchObject({ AUTH_DEMO_HEADER: true, DEMO_ACCOUNTS: true });
+    expect(loadConfig({ NODE_ENV: "production" })).toMatchObject({
+      AUTH_DEMO_HEADER: false,
+      DEMO_ACCOUNTS: false,
+    });
+    expect(loadConfig({ AUTH_DEMO_HEADER: "false" }).AUTH_DEMO_HEADER).toBe(false);
+  });
+});

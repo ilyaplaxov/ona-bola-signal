@@ -1,4 +1,10 @@
-import type { MeasurementReading, RiskFactors, RiskFlag, UserRole } from "@ona-bola/shared";
+import type {
+  MeasurementReading,
+  RiskFactors,
+  RiskFlag,
+  Specialty,
+  UserRole,
+} from "@ona-bola/shared";
 import { seedId } from "./seed-ids";
 
 // SYNTHETIC DEMO DATA. Every person here is invented; district names are real places only.
@@ -9,7 +15,17 @@ export interface SeedUser {
   displayName: string;
   role: UserRole;
   district: string | null;
+  /** Login name; every demo account signs in with DEMO_PASSWORD. */
+  username: string;
+  specialty?: Specialty;
+  facility?: string;
 }
+
+/**
+ * Shared password of the synthetic demo accounts. Not a secret: it is shown on the login page
+ * while DEMO_ACCOUNTS is on, and there is no real data behind it.
+ */
+export const DEMO_PASSWORD = "demo2026";
 
 export const SEED_USERS: SeedUser[] = [
   {
@@ -17,22 +33,65 @@ export const SEED_USERS: SeedUser[] = [
     displayName: "Dr. Aziza Karimova",
     role: "DOCTOR",
     district: "Chilonzor",
+    username: "karimova",
+    facility: "Oilaviy poliklinika 12",
   },
   {
     key: "doctor-yunusobod",
     displayName: "Dr. Bobur Toshmatov",
     role: "DOCTOR",
     district: "Yunusobod",
+    username: "toshmatov",
+    facility: "Oilaviy poliklinika 27",
   },
   {
     key: "doctor-mirzo",
     displayName: "Dr. Dilfuza Ergasheva",
     role: "DOCTOR",
     district: "Mirzo Ulugʻbek",
+    username: "ergasheva",
+    facility: "Oilaviy poliklinika 41",
   },
-  { key: "nurse-chilonzor", displayName: "Nilufar Saidova", role: "NURSE", district: "Chilonzor" },
-  { key: "specialist", displayName: "Dr. Kamola Rasulova", role: "SPECIALIST", district: null },
-  { key: "manager", displayName: "Jamshid Aliyev", role: "MANAGER", district: null },
+  {
+    key: "nurse-chilonzor",
+    displayName: "Nilufar Saidova",
+    role: "NURSE",
+    district: "Chilonzor",
+    username: "saidova",
+    facility: "Oilaviy poliklinika 12",
+  },
+  {
+    key: "specialist",
+    displayName: "Dr. Kamola Rasulova",
+    role: "SPECIALIST",
+    district: null,
+    username: "rasulova",
+  },
+  {
+    key: "endocrinologist",
+    displayName: "Dr. Malika Yusupova",
+    role: "SPECIALIST",
+    district: null,
+    username: "yusupova",
+    specialty: "ENDOCRINOLOGIST",
+    facility: "Shahar endokrinologiya markazi",
+  },
+  {
+    key: "cardiologist",
+    displayName: "Dr. Sardor Nazarov",
+    role: "SPECIALIST",
+    district: null,
+    username: "nazarov",
+    specialty: "CARDIOLOGIST",
+    facility: "Shahar kardiologiya markazi",
+  },
+  {
+    key: "manager",
+    displayName: "Jamshid Aliyev",
+    role: "MANAGER",
+    district: null,
+    username: "aliyev",
+  },
 ];
 
 export const userId = (key: string) => seedId(`user:${key}`);

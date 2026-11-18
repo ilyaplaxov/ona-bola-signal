@@ -8,7 +8,7 @@ import {
 } from "@ona-bola/shared";
 import { Router } from "express";
 import type { Database } from "../db/client";
-import { requireActor } from "../middleware/demo-actor";
+import { requireActor } from "../middleware/auth";
 import { parseInput, sendJson } from "../middleware/validate";
 import type { RuleSet } from "../risk-engine";
 import { acknowledgeAlert, listAlerts } from "../services/alert.service";
