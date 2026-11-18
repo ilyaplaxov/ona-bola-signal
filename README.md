@@ -26,7 +26,7 @@ npm run e2e
 
 **Claude features** (reading a note into the form, explaining an assessment) are off by default. To turn them on, set `AI_ENABLED=true` and `ANTHROPIC_API_KEY` in `backend/.env` and restart `npm run dev`. Without them, or without internet, everything else works and the AI controls stay hidden.
 
-**Taking over the project?** Start with [`docs/HANDOVER.md`](docs/HANDOVER.md) (in Russian): status, how everything fits together, and what to do next. The demo and checkpoint script is [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+**Taking over the project?** Start with [`docs/HANDOVER.md`](docs/HANDOVER.md) (in Russian): status, how everything fits together, and what to do next. The demo and checkpoint script is [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md). The team plan to the final, after the mentor session, is [`docs/TEAM_PLAN.md`](docs/TEAM_PLAN.md) (in Russian).
 
 ## Scripts (from the repository root)
 
