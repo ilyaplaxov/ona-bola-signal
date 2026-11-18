@@ -1,9 +1,10 @@
 import type { ZoneFilter } from "@ona-bola/shared";
 import { Link } from "react-router";
 import { useSession, useStrings } from "../app/session";
+import { AiBadge } from "../components/AiBadge";
 import { ZoneBadge } from "../components/ZoneBadge";
 import { formatDateTime } from "../i18n/format";
-import { useDashboard, useInboxCounts } from "../services/queries";
+import { useAiEnabled, useDashboard, useInboxCounts } from "../services/queries";
 
 const ZONE_CARDS: { zone: ZoneFilter; tone: string }[] = [
   { zone: "RED", tone: "border-red-300 bg-red-50" },
@@ -17,6 +18,7 @@ export function DashboardPage() {
   const { lang } = useSession();
   const stats = useDashboard();
   const counts = useInboxCounts();
+  const aiOn = useAiEnabled();
 
   if (stats.isPending) return <p className="text-slate-500">{s.common.loading}</p>;
   if (stats.isError) return <p className="text-red-700">{s.common.loadError}</p>;
@@ -77,6 +79,26 @@ export function DashboardPage() {
           </div>
         </Link>
       </div>
+
+      <section
+        id="dash-ai"
+        className="overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-white"
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-5">
+          <AiBadge />
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold text-violet-900">{s.ai.chatTitle}</h2>
+            <p className="text-sm text-slate-700">{s.ai.capabilities}</p>
+            <p className="mt-1 text-sm text-slate-500">{s.engine.legend}</p>
+          </div>
+          <span
+            data-ai-state={aiOn ? "on" : "off"}
+            className={`rounded-full px-3 py-1 text-sm font-semibold ${aiOn ? "bg-violet-700 text-white" : "border border-violet-300 bg-white text-violet-800"}`}
+          >
+            {aiOn ? s.ai.statusOn : s.ai.statusOff}
+          </span>
+        </div>
+      </section>
 
       {districts.length > 0 ? (
         <section className="rounded-xl border border-slate-200 bg-white p-5">

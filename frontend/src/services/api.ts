@@ -1,4 +1,4 @@
-import { ApiErrorBody, DEMO_ACTOR_HEADER, type ErrorCode } from "@ona-bola/shared";
+import { ApiErrorBody, type ErrorCode } from "@ona-bola/shared";
 
 /** A failed API call, carrying the shared error code. */
 export class ApiError extends Error {
@@ -15,27 +15,16 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * true when the server has no such route at all ("No route for POST /api/..."), as opposed to a
- * route that answered "not found". Used only by the TEMP fallbacks (auth.tsx, temp-api.ts): they
- * switch themselves off the moment participant 1's real endpoint answers.
- */
-export const isMissingRoute = (error: unknown): boolean =>
-  error instanceof ApiError && error.status === 404 && error.message.startsWith("No route for");
-
 /** Anything with a parse method, such as a shared Zod schema. */
 interface Parser<T> {
   parse(data: unknown): T;
 }
 
-let actorId: string | null = null;
-
-/** The demo user chosen in the role switcher; sent with every request. */
-export function setApiActor(id: string | null): void {
-  actorId = id;
-}
-
-/** Fetches JSON from the API and validates it against a shared contract schema. */
+/**
+ * Fetches JSON from the API and validates it against a shared contract schema. Who is asking comes
+ * from the httpOnly session cookie: the Vite proxy keeps the API on the page's own origin, so the
+ * browser sends it by itself and no header or `credentials` option is needed.
+ */
 export async function requestJson<T>(
   path: string,
   schema: Parser<T>,
@@ -47,7 +36,6 @@ export async function requestJson<T>(
   if (init.body !== undefined && !headers.has("Content-Type") && !(init.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
-  if (actorId) headers.set(DEMO_ACTOR_HEADER, actorId);
 
   const response = await fetch(path, { ...init, headers });
   const body: unknown = await response.json().catch(() => null);

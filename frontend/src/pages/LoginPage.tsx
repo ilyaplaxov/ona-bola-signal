@@ -23,8 +23,13 @@ export function LoginPage() {
   const from = (location.state as { from?: string } | null)?.from ?? "/dashboard";
   if (auth.status === "in") return <Navigate to={from} replace />;
 
+  const code = login.error instanceof ApiError ? login.error.code : null;
   const failure =
-    login.error instanceof ApiError && login.error.status === 401 ? s.auth.invalid : s.auth.failed;
+    code === "INVALID_CREDENTIALS"
+      ? s.auth.invalid
+      : code === "RATE_LIMITED"
+        ? s.auth.rateLimited
+        : s.auth.failed;
 
   function submit(event: FormEvent) {
     event.preventDefault();

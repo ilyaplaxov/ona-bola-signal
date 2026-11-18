@@ -6,7 +6,6 @@ import type {
   ReferralStatus,
   ReferralUrgency,
   SignalChannel,
-  SignalInstruction,
   SignalKind,
   SignalStatus,
   RiskFactorCode,
@@ -81,6 +80,7 @@ const uz = {
     signingIn: "Kirilmoqda…",
     invalid: "Login yoki parol notoʻgʻri.",
     failed: "Kirib boʻlmadi. Birozdan soʻng yana urinib koʻring.",
+    rateLimited: "Juda koʻp urinish. Bir necha daqiqadan soʻng qayta urinib koʻring.",
     signOut: "Chiqish",
     backToSite: "← Bosh sahifa",
     accountNote:
@@ -148,6 +148,10 @@ const uz = {
     conclusion: "Xulosa",
     conclusionPlaceholder: "Xulosa matni…",
     saveConclusion: "Xulosani saqlash",
+    attachFiles: "Bemorning hujjatlarini biriktirish",
+    attachNew: "Yangi fayl yuklash",
+    noFiles: "Bemorda hujjatlar hali yoʻq.",
+    conclusionFiles: "Xulosa fayllari",
     empty: "Yoʻllanmalar yoʻq.",
     failed: "Amalni bajarib boʻlmadi.",
   },
@@ -181,6 +185,11 @@ const uz = {
     reading: "AI oʻqimoqda…",
     draftTitle: "AI qoralamasi (shifokor tekshiradi)",
     draftNothing: "Hujjatdan oʻlchov topilmadi.",
+    datingFound: "Hisobotdagi muddat",
+    useInVisit: "Tashrif shakliga qoʻyish",
+    saveDating: "Muddatni kartaga yozish",
+    datingSaved: "Muddat kartaga yozildi",
+    notSavedYet: "Shifokor tugmani bosmaguncha hech narsa saqlanmaydi",
   },
   dimed: {
     status: {
@@ -234,22 +243,12 @@ const uz = {
       LABOUR_ONSET: "Tugʻruq boshlandi",
       CALL_BACK: "Boshqa savol — qoʻngʻiroq qilishingizni soʻrayman",
     } as Record<SignalKind, string>,
-    instruction: {
-      SEEK_CARE_NOW:
-        "Darhol tibbiy yordamga murojaat qiling. Ahvolingiz ogʻir boʻlsa, 103 ga qoʻngʻiroq qiling. Shifokoringiz signalni oldi.",
-      LABOUR: "103 ga qoʻngʻiroq qiling yoki tugʻruqxonaga boring. Shifokoringiz xabardor qilindi.",
-      DOCTOR_WILL_CALL: "Shifokoringiz sizga qoʻngʻiroq qiladi.",
-    } as Record<SignalInstruction, string>,
     page: {
       title: "Poliklinikaga signal",
       codeLabel: "Shifokoringiz bergan kod",
-      consent:
-        "Signalingizni shifokoringiz koʻradi. Xabarlar internet orqali oʻtadi. Bu tez yordam (103) oʻrnini bosmaydi.",
-      agree: "Roziman",
       next: "Davom etish",
       choose: "Sizni nima bezovta qilmoqda? Bitta tugmani bosing.",
       sent: "Signal yuborildi",
-      invalidCode: "Kod notoʻgʻri yoki muddati oʻtgan.",
       sendFailed: "Yuborib boʻlmadi. Qayta urinib koʻring yoki 103 ga qoʻngʻiroq qiling.",
       another: "Yana signal yuborish",
       forget: "Bu qurilmani uzish",
@@ -289,6 +288,7 @@ const uz = {
     colLast: "Oxirgi oʻlchov",
     colAlerts: "Ogohl.",
     empty: "Hech narsa topilmadi",
+    emptyConsultant: "Sizga yoʻllanma berilgan bemorlar yoʻq.",
   },
   patient: {
     back: "← Reyestrga qaytish",
@@ -474,6 +474,14 @@ const uz = {
     ],
     noPermission: "Sizning rolingiz AI dan foydalanishga ruxsat bermaydi.",
     model: "Model",
+    statusOn: "yoqilgan",
+    statusOff: "oʻchiq",
+    statusTitle: "AI (Claude) holati. Zonani AI emas, Risk Engine belgilaydi.",
+    offNotice:
+      "AI bu serverda ulanmagan. Tugmalar shu yerda turibdi, ammo ishlamaydi. Risk Engine AI siz ham toʻliq ishlaydi. AI ni yoqish uchun administratorga murojaat qiling.",
+    offShort: "AI ulanmagan",
+    capabilities:
+      "Zona sabablarini tushuntiradi · bemor yozuvi boʻyicha savollarga javob beradi · hisobot va izohdan qiymatlarni oʻqiydi",
   },
   register: {
     open: "+ Yangi bemor",
@@ -574,6 +582,7 @@ const en: typeof uz = {
     signingIn: "Signing in…",
     invalid: "Wrong username or password.",
     failed: "Could not sign in. Please try again in a moment.",
+    rateLimited: "Too many attempts. Please wait a few minutes and try again.",
     signOut: "Sign out",
     backToSite: "← Home page",
     accountNote:
@@ -636,6 +645,10 @@ const en: typeof uz = {
     conclusion: "Conclusion",
     conclusionPlaceholder: "Conclusion text…",
     saveConclusion: "Save conclusion",
+    attachFiles: "Attach the patient's documents",
+    attachNew: "Upload a new file",
+    noFiles: "The patient has no documents yet.",
+    conclusionFiles: "Conclusion files",
     empty: "No referrals.",
     failed: "The action failed.",
   },
@@ -669,6 +682,11 @@ const en: typeof uz = {
     reading: "AI is reading…",
     draftTitle: "AI draft (the doctor checks it)",
     draftNothing: "No measurements found in the document.",
+    datingFound: "Dating in the report",
+    useInVisit: "Use in the visit form",
+    saveDating: "Record dating in the chart",
+    datingSaved: "Dating recorded in the chart",
+    notSavedYet: "Nothing is saved until the doctor presses a button",
   },
   dimed: {
     status: {
@@ -722,22 +740,12 @@ const en: typeof uz = {
       LABOUR_ONSET: "Labour has started",
       CALL_BACK: "Another question — please call me back",
     },
-    instruction: {
-      SEEK_CARE_NOW:
-        "Seek medical help immediately. If you feel very unwell, call 103. Your doctor has received the signal.",
-      LABOUR: "Call 103 or go to the maternity hospital. Your doctor has been informed.",
-      DOCTOR_WILL_CALL: "Your doctor will call you.",
-    },
     page: {
       title: "Signal to your clinic",
       codeLabel: "The code your doctor gave you",
-      consent:
-        "Your doctor will see your signal. Messages pass through the internet. This does not replace emergency help (103).",
-      agree: "I agree",
       next: "Continue",
       choose: "What is worrying you? Tap one button.",
       sent: "Signal sent",
-      invalidCode: "The code is wrong or has expired.",
       sendFailed: "Could not send. Try again or call 103.",
       another: "Send another signal",
       forget: "Disconnect this device",
@@ -777,6 +785,7 @@ const en: typeof uz = {
     colLast: "Last measured",
     colAlerts: "Alerts",
     empty: "Nothing found",
+    emptyConsultant: "No patients have been referred to you yet.",
   },
   patient: {
     back: "← Back to the registry",
@@ -949,6 +958,14 @@ const en: typeof uz = {
     chatSuggestions: ["Why this zone?", "What data is missing?", "Summarise the trends briefly"],
     noPermission: "Your role does not allow using AI.",
     model: "Model",
+    statusOn: "on",
+    statusOff: "off",
+    statusTitle: "AI (Claude) status. The zone is set by the Risk Engine, never by the AI.",
+    offNotice:
+      "AI is not connected on this server. The controls are shown but do not work. The Risk Engine works fully without it. Ask the administrator to turn AI on.",
+    offShort: "AI is not connected",
+    capabilities:
+      "Explains the reasons for the zone · answers questions about the patient's record · reads reports and notes into values",
   },
   register: {
     open: "+ New patient",
@@ -1046,6 +1063,7 @@ const ru: typeof uz = {
     signingIn: "Входим…",
     invalid: "Неверный логин или пароль.",
     failed: "Не удалось войти. Попробуйте ещё раз чуть позже.",
+    rateLimited: "Слишком много попыток. Подождите несколько минут и попробуйте снова.",
     signOut: "Выйти",
     backToSite: "← На главную",
     accountNote:
@@ -1108,6 +1126,10 @@ const ru: typeof uz = {
     conclusion: "Заключение",
     conclusionPlaceholder: "Текст заключения…",
     saveConclusion: "Сохранить заключение",
+    attachFiles: "Прикрепить документы пациентки",
+    attachNew: "Загрузить новый файл",
+    noFiles: "У пациентки пока нет документов.",
+    conclusionFiles: "Файлы заключения",
     empty: "Направлений нет.",
     failed: "Не удалось выполнить действие.",
   },
@@ -1141,6 +1163,11 @@ const ru: typeof uz = {
     reading: "ИИ читает…",
     draftTitle: "Черновик ИИ (проверяет врач)",
     draftNothing: "В документе не найдено измерений.",
+    datingFound: "Срок по отчёту",
+    useInVisit: "Подставить в форму визита",
+    saveDating: "Записать срок в карту",
+    datingSaved: "Срок записан в карту",
+    notSavedYet: "Пока врач не нажмёт кнопку, ничего не сохраняется",
   },
   dimed: {
     status: {
@@ -1194,22 +1221,12 @@ const ru: typeof uz = {
       LABOUR_ONSET: "Начались роды",
       CALL_BACK: "Другой вопрос — прошу перезвонить",
     },
-    instruction: {
-      SEEK_CARE_NOW:
-        "Немедленно обратитесь за медицинской помощью. Если состояние тяжёлое — звоните 103. Ваш врач получил сигнал.",
-      LABOUR: "Звоните 103 или езжайте в роддом. Ваш врач получил сигнал для сведения.",
-      DOCTOR_WILL_CALL: "Ваш врач вам перезвонит.",
-    },
     page: {
       title: "Сигнал в поликлинику",
       codeLabel: "Код, который дал врач",
-      consent:
-        "Ваш сигнал увидит ваш врач. Сообщения проходят через интернет. Это не заменяет скорую помощь — 103.",
-      agree: "Согласна",
       next: "Продолжить",
       choose: "Что вас беспокоит? Нажмите одну кнопку.",
       sent: "Сигнал отправлен",
-      invalidCode: "Код неверный или просрочен.",
       sendFailed: "Не удалось отправить. Попробуйте ещё раз или позвоните 103.",
       another: "Отправить ещё один сигнал",
       forget: "Отключить это устройство",
@@ -1249,6 +1266,7 @@ const ru: typeof uz = {
     colLast: "Последнее измерение",
     colAlerts: "Опов.",
     empty: "Ничего не найдено",
+    emptyConsultant: "Нет пациенток с направлением к вам.",
   },
   patient: {
     back: "← Назад в реестр",
@@ -1427,6 +1445,14 @@ const ru: typeof uz = {
     ],
     noPermission: "Ваша роль не позволяет пользоваться ИИ.",
     model: "Модель",
+    statusOn: "включён",
+    statusOff: "выключен",
+    statusTitle: "Состояние ИИ (Claude). Зону определяет Risk Engine, не ИИ.",
+    offNotice:
+      "ИИ на этом сервере не подключён. Кнопки показаны, но не работают. Risk Engine работает полностью и без ИИ. Чтобы включить ИИ, обратитесь к администратору.",
+    offShort: "ИИ не подключён",
+    capabilities:
+      "Объясняет причины зоны · отвечает на вопросы по карте пациентки · переносит значения из отчётов и заметок в форму",
   },
   register: {
     open: "+ Новая пациентка",

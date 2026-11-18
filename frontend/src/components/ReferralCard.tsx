@@ -1,10 +1,16 @@
-import type { Referral, ReferralActionRequest, ReferralStatus } from "@ona-bola/shared";
+import {
+  attachmentFilePath,
+  type Referral,
+  type ReferralActionRequest,
+  type ReferralStatus,
+} from "@ona-bola/shared";
 import { useState } from "react";
 import { Link } from "react-router";
 import { useCan, useCurrentUser } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { formatDateTime } from "../i18n/format";
-import { useUpdateReferral } from "../services/queries";
+import { useAttachments, useUpdateReferral, useUploadAttachment } from "../services/queries";
+import { uploadProblem } from "./DocumentsPanel";
 
 const STATUS_STYLE: Record<ReferralStatus, string> = {
   SENT: "border-amber-300 bg-amber-50 text-amber-900",
@@ -17,6 +23,129 @@ const STATUS_STYLE: Record<ReferralStatus, string> = {
 const chip = "rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap";
 const button =
   "rounded-lg px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60";
+
+/** The files attached to a conclusion, as links (names come from the patient's file list). */
+function ConclusionFiles({ patientId, ids }: { patientId: string; ids: string[] }) {
+  const s = useStrings();
+  const files = useAttachments(patientId);
+  return (
+    <p className="mt-2 text-sm text-slate-700">
+      {s.referral.conclusionFiles}:{" "}
+      {ids.map((id, i) => (
+        <span key={id}>
+          {i > 0 ? ", " : ""}
+          <a
+            href={attachmentFilePath(id)}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-rose-800 underline"
+          >
+            {files.data?.items.find((f) => f.id === id)?.fileName ?? id.slice(0, 8)}
+          </a>
+        </span>
+      ))}
+    </p>
+  );
+}
+
+/** Conclusion text, plus the patient's existing files to attach, or a new file to upload. */
+function ConclusionForm({
+  referral,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  referral: Referral;
+  pending: boolean;
+  onSave: (text: string, attachmentIds: string[]) => void;
+  onCancel: () => void;
+}) {
+  const s = useStrings();
+  const files = useAttachments(referral.patientId);
+  const upload = useUploadAttachment(referral.patientId);
+  const [text, setText] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const toggle = (id: string) =>
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const addFile = (file: File | undefined) => {
+    if (!file) return;
+    upload.mutate(
+      { file, kind: "SPECIALIST_CONCLUSION", referralId: referral.id },
+      { onSuccess: (a) => setPicked((p) => [...p, a.id]) },
+    );
+  };
+
+  return (
+    <div className="mt-3 space-y-3">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+        maxLength={4000}
+        placeholder={s.referral.conclusionPlaceholder}
+        aria-label={s.referral.conclusion}
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-rose-600"
+      />
+      <fieldset className="space-y-1.5">
+        <legend className="text-sm font-semibold text-slate-700">{s.referral.attachFiles}</legend>
+        {files.data && files.data.items.length === 0 ? (
+          <p className="text-sm text-slate-500">{s.referral.noFiles}</p>
+        ) : null}
+        {files.data?.items.map((f) => (
+          <label key={f.id} className="flex items-center gap-2 text-sm text-slate-800">
+            <input
+              type="checkbox"
+              data-conclusion-file={f.id}
+              checked={picked.includes(f.id)}
+              disabled={!picked.includes(f.id) && picked.length >= 10}
+              onChange={() => toggle(f.id)}
+              className="h-5 w-5"
+            />
+            <span className="font-medium">{f.fileName}</span>
+            <span className="text-slate-500">· {s.docs.kinds[f.kind]}</span>
+          </label>
+        ))}
+        <label className="inline-block text-sm font-semibold text-rose-800">
+          <span className="cursor-pointer underline">{s.referral.attachNew}</span>
+          <input
+            type="file"
+            data-conclusion-upload
+            className="sr-only"
+            accept=".pdf,.jpg,.jpeg,.png,.dcm"
+            disabled={upload.isPending}
+            onChange={(e) => {
+              addFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {upload.isError ? (
+          <p role="alert" className="text-sm text-red-700">
+            {uploadProblem(upload.error, s)}
+          </p>
+        ) : null}
+      </fieldset>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          data-referral-action="conclude"
+          disabled={text.trim() === "" || pending || upload.isPending}
+          onClick={() => onSave(text.trim(), picked)}
+          className={`${button} bg-rose-800 text-white hover:bg-rose-900`}
+        >
+          {s.referral.saveConclusion}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className={`${button} border border-slate-300 bg-white text-slate-700 hover:bg-slate-100`}
+        >
+          {s.referral.cancel}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * One referral with the actions its status and the viewer's role allow (shared/permissions.ts):
@@ -36,7 +165,6 @@ export function ReferralCard({
   const canCreate = useCan("REFERRAL_CREATE");
   const update = useUpdateReferral();
   const [writing, setWriting] = useState(false);
-  const [text, setText] = useState("");
 
   const mine = referral.fromUser.id === me?.id;
   const open = referral.status === "SENT" || referral.status === "ACCEPTED";
@@ -81,41 +209,24 @@ export function ReferralCard({
         <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
           <p className="text-sm font-semibold text-emerald-900">{s.referral.conclusion}</p>
           <p className="mt-1 whitespace-pre-line text-slate-800">{referral.conclusion}</p>
+          {referral.conclusionAttachmentIds.length > 0 ? (
+            <ConclusionFiles
+              patientId={referral.patientId}
+              ids={referral.conclusionAttachmentIds}
+            />
+          ) : null}
         </div>
       ) : null}
 
       {writing ? (
-        <div className="mt-3 space-y-2">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={4}
-            maxLength={4000}
-            placeholder={s.referral.conclusionPlaceholder}
-            aria-label={s.referral.conclusion}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-rose-600"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              data-referral-action="conclude"
-              disabled={text.trim() === "" || update.isPending}
-              onClick={() =>
-                act({ action: "CONCLUDE", conclusion: text.trim(), attachmentIds: [] })
-              }
-              className={`${button} bg-rose-800 text-white hover:bg-rose-900`}
-            >
-              {s.referral.saveConclusion}
-            </button>
-            <button
-              type="button"
-              onClick={() => setWriting(false)}
-              className={`${button} border border-slate-300 bg-white text-slate-700 hover:bg-slate-100`}
-            >
-              {s.referral.cancel}
-            </button>
-          </div>
-        </div>
+        <ConclusionForm
+          referral={referral}
+          pending={update.isPending}
+          onSave={(conclusion, attachmentIds) =>
+            act({ action: "CONCLUDE", conclusion, attachmentIds })
+          }
+          onCancel={() => setWriting(false)}
+        />
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
           {respond && referral.status === "SENT" ? (

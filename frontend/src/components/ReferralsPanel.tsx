@@ -9,17 +9,9 @@ const field =
   "mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-base text-slate-900 focus:border-rose-600";
 
 /** "Refer to a specialist": specialty, urgency and the reason. Sent as SENT; the consultant takes it from there. */
-function ReferralForm({
-  patientId,
-  patientReference,
-  onDone,
-}: {
-  patientId: string;
-  patientReference: string;
-  onDone: () => void;
-}) {
+function ReferralForm({ patientId, onDone }: { patientId: string; onDone: () => void }) {
   const s = useStrings();
-  const create = useCreateReferral(patientId, patientReference);
+  const create = useCreateReferral(patientId);
   const [specialty, setSpecialty] = useState<Specialty>("THERAPIST");
   const [urgency, setUrgency] = useState<ReferralUrgency>("ROUTINE");
   const [reason, setReason] = useState("");
@@ -120,13 +112,7 @@ function ReferralForm({
 }
 
 /** The "Referrals" tab of a patient card: this patient's referrals and the form to add one. */
-export function ReferralsPanel({
-  patientId,
-  patientReference,
-}: {
-  patientId: string;
-  patientReference: string;
-}) {
+export function ReferralsPanel({ patientId }: { patientId: string }) {
   const s = useStrings();
   const canCreate = useCan("REFERRAL_CREATE");
   const list = useReferrals({ box: "all", patientId });
@@ -147,13 +133,7 @@ export function ReferralsPanel({
           </button>
         ) : null}
       </div>
-      {creating ? (
-        <ReferralForm
-          patientId={patientId}
-          patientReference={patientReference}
-          onDone={() => setCreating(false)}
-        />
-      ) : null}
+      {creating ? <ReferralForm patientId={patientId} onDone={() => setCreating(false)} /> : null}
       {list.isPending ? <p className="text-slate-500">{s.common.loading}</p> : null}
       {list.isError ? <p className="text-red-700">{s.common.loadError}</p> : null}
       {list.data && list.data.items.length === 0 && !creating ? (

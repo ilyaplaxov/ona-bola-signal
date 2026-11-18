@@ -2,7 +2,7 @@ import type { ChatMessage } from "@ona-bola/shared";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
-import { useAiChat } from "../services/queries";
+import { useAiChat, useAiEnabled } from "../services/queries";
 
 /** The API accepts up to 12 messages; older turns are dropped in pairs so the chat starts with a question. */
 const MAX_SENT = 11;
@@ -15,7 +15,8 @@ const MAX_SENT = 11;
 export function AiChat({ patientId }: { patientId: string }) {
   const s = useStrings();
   const { lang } = useSession();
-  const allowed = useCan("AI_USE");
+  const roleOk = useCan("AI_USE");
+  const allowed = roleOk && useAiEnabled();
   const chat = useAiChat(patientId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -108,7 +109,7 @@ export function AiChat({ patientId }: { patientId: string }) {
           {s.ai.chatUnavailable}
         </p>
       ) : null}
-      {!allowed ? <p className="mt-2 text-sm text-amber-800">{s.ai.noPermission}</p> : null}
+      {!roleOk ? <p className="mt-2 text-sm text-amber-800">{s.ai.noPermission}</p> : null}
 
       <form onSubmit={onSubmit} className="mt-3 flex gap-2">
         <input

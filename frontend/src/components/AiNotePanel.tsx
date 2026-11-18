@@ -3,8 +3,9 @@ import { useState } from "react";
 import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { ApiError } from "../services/api";
-import { useAnalyzeNote } from "../services/queries";
+import { useAiEnabled, useAnalyzeNote } from "../services/queries";
 import { AiBadge } from "./AiBadge";
+import { AiOffNotice } from "./AiOffNotice";
 
 /**
  * Free-text note → Claude → values in the measurement form. Units are converted on the server,
@@ -19,7 +20,8 @@ export function AiNotePanel({
 }) {
   const s = useStrings();
   const { lang } = useSession();
-  const allowed = useCan("AI_USE");
+  const aiOn = useAiEnabled();
+  const allowed = useCan("AI_USE") && aiOn;
   const analyze = useAnalyzeNote(patientId);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
@@ -53,6 +55,7 @@ export function AiNotePanel({
 
       {open ? (
         <div id="ai-note-body" className="mt-2 space-y-2">
+          {aiOn ? null : <AiOffNotice />}
           <textarea
             id="ai-note"
             rows={3}

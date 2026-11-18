@@ -6,17 +6,16 @@ import { mkdirSync } from "node:fs";
 // docs/demo/ for the pitch deck and as a fallback if the live demo fails.
 //
 // Roles come from signing in (there is no role switcher any more). The demo accounts are the
-// seeded users: username = first name . last name in lower case, one shared demo password.
+// seeded users (backend/src/scripts/seed-data.ts) with one shared demo password.
 
 const SHOTS = "docs/demo";
 const DEMO_PATIENT = "OB-DEMO-01";
-// TEMP: the shared demo password of the sign-in fallback (frontend/src/app/auth.tsx). Once the
-// server's /api/auth/demo-accounts fixes the real one, change it here.
-const DEMO_PASSWORD = "demo1234";
+const DEMO_PASSWORD = "demo2026";
 
-const NURSE = "nilufar.saidova";
-const DOCTOR = "aziza.karimova";
-const SPECIALIST = "kamola.rasulova";
+const NURSE = "saidova"; // Nilufar Saidova, nurse, Chilonzor
+const DOCTOR = "karimova"; // Dr. Aziza Karimova, obstetrician, Chilonzor
+const SPECIALIST = "rasulova"; // Dr. Kamola Rasulova, receives the alerts, every district
+const ENDOCRINOLOGIST = "yusupova"; // Dr. Malika Yusupova, sees only referred patients
 
 // A 1x1 PNG: a synthetic "document" for the upload tests.
 const PNG = Buffer.from(
@@ -30,11 +29,13 @@ const resetDemoData = () => execSync("npm run db:reset", { stdio: "inherit" });
 const shot = (page: Page, name: string) =>
   page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
 
+/** Signs in through the API (the cookie lands in the page's context), then opens the dashboard. */
 async function signIn(page: Page, username: string) {
-  await page.goto("/login");
-  await page.locator("#login-username").fill(username);
-  await page.locator("#login-password").fill(DEMO_PASSWORD);
-  await page.locator("#login-submit").click();
+  const response = await page.request.post("/api/auth/login", {
+    data: { username, password: DEMO_PASSWORD },
+  });
+  expect(response.ok()).toBe(true);
+  await page.goto("/dashboard");
   await expect(page.locator("#profile-link")).toBeVisible();
 }
 
@@ -43,7 +44,7 @@ async function signOut(page: Page) {
   await expect(page).toHaveURL(/\/login$/);
 }
 
-/** Sign out and sign in as someone else, in the same browser (the TEMP stores are shared). */
+/** Sign out and sign in as someone else, in the same browser. */
 async function switchTo(page: Page, username: string) {
   await signOut(page);
   await signIn(page, username);
@@ -85,6 +86,8 @@ test("sign-in: nobody gets in without it, a wrong password is refused", async ({
   await page.locator("#login-password").fill(DEMO_PASSWORD);
   await page.locator("#login-submit").click();
   await expect(page.locator("#profile-link")).toContainText("Nilufar Saidova");
+  // The header says who is signed in and where they work.
+  await expect(page.locator("#profile-link")).toContainText("Chilonzor");
   await signOut(page);
 });
 
@@ -102,6 +105,10 @@ test("a nurse's visit turns the zone red and the specialist acknowledges the ale
   await expect(header.getByText("Yashil")).toBeVisible();
   // Risk-group badge from the anamnesis: first birth and pre-eclampsia in the family.
   await expect(header.getByText("Preeklampsiya: yuqori xavf")).toBeVisible();
+  // The AI panel and its state are always on screen (violet), even when the server has AI off.
+  await expect(page.locator("#ai-status")).toBeVisible();
+  await expect(page.locator("#ai-panel-title")).toBeVisible();
+  await expect(page.locator("[data-ai-state]").first()).toBeVisible();
   await shot(page, "02-patient-green");
 
   const pendingBefore = await pendingBadge(page);
@@ -141,19 +148,27 @@ test("a nurse's visit turns the zone red and the specialist acknowledges the ale
   await shot(page, "05-dashboard-after");
 });
 
-test("a referral goes doctor → specialist → conclusion → closed", async ({ page }) => {
+test("a consultant sees an empty registry until a patient is referred", async ({ page }) => {
+  await signIn(page, ENDOCRINOLOGIST);
+  await page.goto("/patients");
+  await expect(page.getByText("Sizga yoʻllanma berilgan bemorlar yoʻq.")).toBeVisible();
+  await signOut(page);
+});
+
+test("a referral goes doctor → endocrinologist → conclusion with a file → closed", async ({
+  page,
+}) => {
   await signIn(page, DOCTOR);
   await openDemoPatient(page);
   await page.locator("#tab-referrals").click();
   await page.locator("#referral-open").click();
-  // The demo specialist has no specialty in the seed, so any choice reaches them in the TEMP store.
-  await page.locator("#referral-specialty").selectOption("CARDIOLOGIST");
-  await page.locator("#referral-reason").fill("Sintetik: yuqori bosim, kardiolog koʻrigi kerak");
+  await page.locator("#referral-specialty").selectOption("ENDOCRINOLOGIST");
+  await page.locator("#referral-reason").fill("Sintetik: glyukoza nazorati, endokrinolog koʻrigi");
   await page.locator("#referral-submit").click();
   await expect(page.locator('[data-referral="SENT"]')).toBeVisible();
   await shot(page, "08-referral-sent");
 
-  await switchTo(page, SPECIALIST);
+  await switchTo(page, ENDOCRINOLOGIST);
   await page.locator('nav a[href="/referrals"]').click();
   await expect(page.locator('[data-referral="SENT"]')).toHaveCount(1);
   await shot(page, "09-specialist-referral-inbox");
@@ -162,9 +177,18 @@ test("a referral goes doctor → specialist → conclusion → closed", async ({
   await page.locator('[data-referral-action="write-conclusion"]').click();
   await page
     .locator("[data-referral] textarea")
-    .fill("Sintetik xulosa: bosim nazorati, 2 haftadan keyin qayta koʻrik.");
+    .fill("Sintetik xulosa: glyukoza me'yorda, 4 haftadan keyin qayta koʻrik.");
+  // A new file goes up with the conclusion and is ticked on its own.
+  await page
+    .locator("[data-conclusion-upload]")
+    .setInputFiles({ name: "xulosa.png", mimeType: "image/png", buffer: PNG });
+  await expect(page.locator("[data-conclusion-file]:checked")).toHaveCount(1);
   await page.locator('[data-referral-action="conclude"]').click();
   await expect(page.locator('[data-referral="CONCLUDED"]')).toBeVisible();
+  await expect(page.getByText("xulosa.png")).toBeVisible();
+  // Now the patient is on the consultant's registry.
+  await page.goto("/patients");
+  await expect(page.locator("tbody tr")).toHaveCount(1);
 
   await switchTo(page, DOCTOR);
   await openDemoPatient(page);
@@ -208,6 +232,8 @@ test("a document is uploaded by drag-and-drop and by the button, then previewed"
   await expect(page.locator('[data-dimed="SENT"]').first()).toBeVisible({ timeout: 20_000 });
   await page.locator("[data-document] button").first().click();
   await expect(page.locator("[data-document] img")).toBeVisible();
+  // "Read with AI" is always listed for a picture or PDF; it is switched off when the server has no AI.
+  await expect(page.locator("[data-ai-read]").first()).toBeVisible();
   await shot(page, "10-documents");
 
   // A file that is not a PDF, JPG, PNG or DICOM is refused before it leaves the browser.
@@ -234,6 +260,7 @@ test("a patient's signal from /signal reaches the doctor, who reacts to it", asy
   await expect(phone.locator("#signal-next")).toBeDisabled(); // consent first
   await phone.locator("#signal-consent").check();
   await phone.locator("#signal-next").click();
+  await expect(phone).not.toHaveURL(/code=/);
   await phone.locator('[data-signal-kind="HEADACHE_VISION"]').click();
   await expect(phone.locator("#signal-answer")).toContainText("103");
   await phone.screenshot({ path: `${SHOTS}/11-patient-signal-phone.png`, fullPage: true });

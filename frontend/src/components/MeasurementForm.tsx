@@ -8,7 +8,7 @@ import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { unitLabel } from "../i18n/format";
 import { ApiError } from "../services/api";
-import { useAiEnabled, useSubmitMeasurements } from "../services/queries";
+import { useSubmitMeasurements } from "../services/queries";
 import { AiNotePanel } from "./AiNotePanel";
 import { ZoneBadge } from "./ZoneBadge";
 
@@ -22,37 +22,62 @@ const localNow = () => toLocalInput(new Date());
 
 const EMPTY = { systolic: "", diastolic: "", hb: "", protein: "", glucose: "" };
 
+type Draft = AnalyzeNoteResponse["draft"];
+
+/** Form values for what Claude found; the fields it found nothing for stay empty. */
+function valuesFromDraft(draft: Draft): typeof EMPTY {
+  const next = { ...EMPTY };
+  for (const m of draft.measurements) {
+    if (m.type === "BLOOD_PRESSURE") {
+      next.systolic = String(m.systolic);
+      next.diastolic = String(m.diastolic);
+    } else if (m.type === "HEMOGLOBIN") next.hb = String(m.value);
+    else if (m.type === "PROTEINURIA") next.protein = String(m.value);
+    else next.glucose = String(m.value);
+  }
+  return next;
+}
+
 /**
  * One visit at a time. The submission id is created once per visit and reused on retry, so a
  * double click or a network retry never stores the visit twice. The zone comes back from the server.
  */
-export function MeasurementForm({ patientId }: { patientId: string }) {
+export function MeasurementForm({
+  patientId,
+  initialDraft,
+}: {
+  patientId: string;
+  /** A draft read from a document in the Documents tab: the form opens already filled with it. */
+  initialDraft?: Draft | undefined;
+}) {
   const s = useStrings();
   const { lang } = useSession();
   const allowed = useCan("VISIT_ADD");
   const submit = useSubmitMeasurements(patientId);
-  const aiEnabled = useAiEnabled();
   const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
-  const [values, setValues] = useState(EMPTY);
-  const [measuredAt, setMeasuredAt] = useState(localNow);
-  const [source, setSource] = useState<"MANUAL" | "AI_ASSISTED">("MANUAL");
+  const prefilled = initialDraft !== undefined && initialDraft.measurements.length > 0;
+  const [values, setValues] = useState(() => (prefilled ? valuesFromDraft(initialDraft) : EMPTY));
+  const [measuredAt, setMeasuredAt] = useState(() =>
+    prefilled && initialDraft.measuredAt
+      ? toLocalInput(new Date(initialDraft.measuredAt))
+      : localNow(),
+  );
+  const [source, setSource] = useState<"MANUAL" | "AI_ASSISTED">(
+    prefilled ? "AI_ASSISTED" : "MANUAL",
+  );
   const [problem, setProblem] = useState<string | null>(null);
 
   /** Puts Claude's draft into the form (only the values it found); the clinician still saves. */
-  function applyDraft(draft: AnalyzeNoteResponse["draft"]) {
+  function applyDraft(draft: Draft) {
     if (draft.measurements.length === 0) return;
-    setValues((v) => {
-      const next = { ...v };
-      for (const m of draft.measurements) {
-        if (m.type === "BLOOD_PRESSURE") {
-          next.systolic = String(m.systolic);
-          next.diastolic = String(m.diastolic);
-        } else if (m.type === "HEMOGLOBIN") next.hb = String(m.value);
-        else if (m.type === "PROTEINURIA") next.protein = String(m.value);
-        else next.glucose = String(m.value);
-      }
-      return next;
-    });
+    const found = valuesFromDraft(draft);
+    setValues((v) => ({
+      systolic: found.systolic || v.systolic,
+      diastolic: found.diastolic || v.diastolic,
+      hb: found.hb || v.hb,
+      protein: found.protein || v.protein,
+      glucose: found.glucose || v.glucose,
+    }));
     if (draft.measuredAt) setMeasuredAt(toLocalInput(new Date(draft.measuredAt)));
     setSource("AI_ASSISTED");
     setProblem(null);
@@ -117,9 +142,7 @@ export function MeasurementForm({ patientId }: { patientId: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-3" noValidate>
       <p className="text-xs text-slate-500">{s.form.subtitle}</p>
-      {aiEnabled ? (
-        <AiNotePanel key={submissionId} patientId={patientId} onDraft={applyDraft} />
-      ) : null}
+      <AiNotePanel key={submissionId} patientId={patientId} onDraft={applyDraft} />
       <div>
         <label className={label} htmlFor="m-when">
           {s.form.when}

@@ -30,7 +30,6 @@ import {
   type AttachmentKind,
   type CreatePatientRequest,
   type CreateReferralRequest,
-  type CurrentUser,
   type ReferralActionRequest,
   type ReferralListQuery,
   type ReferralStatus,
@@ -42,10 +41,8 @@ import {
   type ZoneFilter,
 } from "@ona-bola/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCurrentUser } from "../app/auth";
 import type { Lang } from "../i18n/strings";
-import { ApiError, isMissingRoute, requestJson, sendJson } from "./api";
-import { tempAttachments, tempReferrals, tempSignals } from "./temp-api";
+import { requestJson, sendJson } from "./api";
 
 /** Lists that should update without a manual refresh (brief: alerts appear on their own). */
 const LIVE_MS = 5_000;
@@ -87,7 +84,12 @@ export const useDashboard = () =>
     refetchInterval: LIVE_MS,
   });
 
-export function usePatients(filters: { q?: string; zone?: ZoneFilter; district?: string }) {
+export function usePatients(filters: {
+  q?: string;
+  zone?: ZoneFilter;
+  district?: string;
+  assigned?: "me";
+}) {
   return useQuery({
     queryKey: ["patients", filters],
     queryFn: () =>
@@ -188,25 +190,7 @@ export const useAiChat = (patientId: string) =>
 
 // ---------------------------------------------------------------------------------------------
 // Referrals, documents, DIMED status, patient signals (TEAM_PLAN items 3, 6, 7, 8).
-//
-// TEMP(api): each call goes to the real endpoint (shared/src/api.ts). Only when the server has no
-// such route yet ("No route for ...") does the in-browser stand-in in temp-api.ts answer instead.
-// Delete `orTemp` and temp-api.ts once participant 1's endpoints are live.
 // ---------------------------------------------------------------------------------------------
-
-async function orTemp<T>(real: () => Promise<T>, temp: () => T): Promise<T> {
-  try {
-    return await real();
-  } catch (error) {
-    if (isMissingRoute(error)) return temp();
-    throw error;
-  }
-}
-
-function need(me: CurrentUser | null): CurrentUser {
-  if (!me) throw new ApiError(401, "ACTOR_REQUIRED", "Sign in first");
-  return me;
-}
 
 export function useReferrals(filters: {
   box?: ReferralListQuery["box"];
@@ -214,42 +198,24 @@ export function useReferrals(filters: {
   patientId?: string;
   enabled?: boolean;
 }) {
-  const me = useCurrentUser();
   const box = filters.box ?? "all";
   return useQuery({
-    queryKey: ["referrals", box, filters.status, filters.patientId, me?.id],
-    enabled: me !== null && filters.enabled !== false,
+    queryKey: ["referrals", box, filters.status, filters.patientId],
+    enabled: filters.enabled !== false,
     queryFn: () =>
-      orTemp(
-        () =>
-          requestJson(
-            `/api/referrals${query({ box, status: filters.status, patientId: filters.patientId })}`,
-            ReferralListResponse,
-          ),
-        () => ({
-          items: tempReferrals.list(
-            {
-              box,
-              ...(filters.status ? { status: filters.status } : {}),
-              ...(filters.patientId ? { patientId: filters.patientId } : {}),
-            },
-            need(me),
-          ),
-        }),
+      requestJson(
+        `/api/referrals${query({ box, status: filters.status, patientId: filters.patientId })}`,
+        ReferralListResponse,
       ),
     refetchInterval: LIVE_MS,
   });
 }
 
-export function useCreateReferral(patientId: string, patientReference: string) {
+export function useCreateReferral(patientId: string) {
   const client = useQueryClient();
-  const me = useCurrentUser();
   return useMutation({
     mutationFn: (body: CreateReferralRequest) =>
-      orTemp(
-        () => sendJson(`/api/patients/${patientId}/referrals`, Referral, body, "POST"),
-        () => tempReferrals.create(patientId, patientReference, body, need(me)),
-      ),
+      sendJson(`/api/patients/${patientId}/referrals`, Referral, body, "POST"),
     onSuccess: () => client.invalidateQueries(),
   });
 }
@@ -257,13 +223,9 @@ export function useCreateReferral(patientId: string, patientReference: string) {
 /** One action per call: accept, conclude, close or cancel. */
 export function useUpdateReferral() {
   const client = useQueryClient();
-  const me = useCurrentUser();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: ReferralActionRequest }) =>
-      orTemp(
-        () => sendJson(`/api/referrals/${id}`, Referral, body, "PATCH"),
-        () => tempReferrals.act(id, body, need(me)),
-      ),
+      sendJson(`/api/referrals/${id}`, Referral, body, "PATCH"),
     onSuccess: () => client.invalidateQueries(),
   });
 }
@@ -271,150 +233,103 @@ export function useUpdateReferral() {
 export const useAttachments = (patientId: string) =>
   useQuery({
     queryKey: ["attachments", patientId],
-    queryFn: () =>
-      orTemp(
-        () => requestJson(`/api/patients/${patientId}/attachments`, AttachmentListResponse),
-        () => ({ items: tempAttachments.list(patientId) }),
-      ),
+    queryFn: () => requestJson(`/api/patients/${patientId}/attachments`, AttachmentListResponse),
     refetchInterval: LIVE_MS,
   });
 
-/** Multipart upload (shared/src/attachment.ts): the file plus its type and an optional note. */
+/**
+ * Multipart upload (shared/src/attachment.ts): the file plus its type and an optional note.
+ * 413: over 10 MB; 415: not a PDF, JPG, PNG or DICOM (the server checks the content, not the name).
+ */
 export function useUploadAttachment(patientId: string) {
   const client = useQueryClient();
-  const me = useCurrentUser();
   return useMutation({
     mutationFn: ({
       file,
       kind,
       description,
+      referralId,
     }: {
       file: File;
       kind: AttachmentKind;
       description?: string | undefined;
-    }) =>
-      orTemp(
-        () => {
-          const form = new FormData();
-          form.set("file", file);
-          form.set("kind", kind);
-          if (description?.trim()) form.set("description", description.trim());
-          return requestJson(`/api/patients/${patientId}/attachments`, Attachment, {
-            method: "POST",
-            body: form,
-          });
-        },
-        () => tempAttachments.upload(patientId, file, { kind, description }, need(me)),
-      ),
+      referralId?: string | undefined;
+    }) => {
+      const form = new FormData();
+      form.set("kind", kind);
+      if (description?.trim()) form.set("description", description.trim());
+      if (referralId) form.set("referralId", referralId);
+      form.set("file", file); // the file goes last so the text fields are read first
+      return requestJson(`/api/patients/${patientId}/attachments`, Attachment, {
+        method: "POST",
+        body: form,
+      });
+    },
     onSuccess: () => client.invalidateQueries(),
   });
 }
 
-/** Claude reads an uploaded report into a draft; nothing is saved (no stand-in: AI needs the server). */
+/** Claude reads an uploaded report into a draft; nothing is saved until the doctor confirms it. */
 export const useAnalyzeDocument = () =>
   useMutation({
     mutationFn: ({ id, language }: { id: string; language: Lang }) =>
       sendJson(`/api/attachments/${id}/analyze`, AnalyzeDocumentResponse, { language }, "POST"),
   });
 
-/** DIMED delivery status of a patient's records; mode OFF with no items while the server lacks it. */
+/** DIMED delivery status of a patient's records (mode OFF, STUB or LIVE). */
 export const useDimed = (patientId: string) =>
   useQuery({
     queryKey: ["dimed", patientId],
-    queryFn: () =>
-      orTemp(
-        () => requestJson(`/api/patients/${patientId}/dimed`, DimedStatusResponse),
-        () => ({ mode: "OFF" as const, items: [] }),
-      ),
+    queryFn: () => requestJson(`/api/patients/${patientId}/dimed`, DimedStatusResponse),
     refetchInterval: LIVE_MS,
   });
 
-export const useSignals = (
-  filters: { status?: SignalStatus; patientId?: string },
-  enabled = true,
-) =>
+export const useSignals = (filters: { status?: SignalStatus; patientId?: string } = {}) =>
   useQuery({
     queryKey: ["signals", filters],
-    enabled,
-    queryFn: () =>
-      orTemp(
-        () => requestJson(`/api/signals${query(filters)}`, SignalListResponse),
-        () => ({ items: tempSignals.list(filters) }),
-      ),
+    queryFn: () => requestJson(`/api/signals${query(filters)}`, SignalListResponse),
     refetchInterval: LIVE_MS,
   });
-
-/**
- * Numbers for the header badges and the dashboard: the server's own counts (DashboardStats.newSignals
- * and incomingReferrals) once it sends them; until then (TEMP) they are counted from the lists.
- */
-export function useInboxCounts() {
-  const stats = useDashboard().data;
-  const fromServer = stats?.newSignals !== undefined;
-  const wait = stats === undefined || fromServer;
-  const signals = useSignals({ status: "NEW" }, !wait);
-  const referrals = useReferrals({ box: "incoming", status: "SENT", enabled: !wait });
-  if (stats && fromServer) {
-    return {
-      newSignals: stats.newSignals?.total ?? 0,
-      escalatedSignals: stats.newSignals?.escalated ?? 0,
-      incomingReferrals: stats.incomingReferrals ?? 0,
-    };
-  }
-  return {
-    newSignals: signals.data?.items.length ?? 0,
-    escalatedSignals: signals.data?.items.filter((x) => x.escalated).length ?? 0,
-    incomingReferrals: referrals.data?.items.length ?? 0,
-  };
-}
 
 /** Mark what was done about a patient's signal: contacted, called in, sent to hospital. */
 export function useHandleSignal() {
   const client = useQueryClient();
-  const me = useCurrentUser();
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: Exclude<SignalStatus, "NEW"> }) =>
-      orTemp(
-        () => sendJson(`/api/signals/${id}`, PatientSignal, { status }, "PATCH"),
-        () => tempSignals.handle(id, status, need(me)),
-      ),
+      sendJson(`/api/signals/${id}`, PatientSignal, { status }, "PATCH"),
     onSuccess: () => client.invalidateQueries(),
   });
 }
 
 /** One-time code (and Telegram / website links) that connects a patient to the signal channel. */
-export function useIssueSignalLink(patientId: string, patientReference: string) {
+export function useIssueSignalLink(patientId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      orTemp(
-        () =>
-          sendJson(`/api/patients/${patientId}/signal-link`, SignalLinkResponse, undefined, "POST"),
-        () => tempSignals.issueLink(patientId, patientReference),
-      ),
+      sendJson(`/api/patients/${patientId}/signal-link`, SignalLinkResponse, undefined, "POST"),
     onSuccess: () => client.invalidateQueries({ queryKey: ["patient", patientId] }),
   });
 }
 
-/** Whether the web page of this patient is connected: the server's flag, or the stand-in's. */
-export const tempSignalLinked = (patientId: string): boolean => tempSignals.isLinked(patientId);
-
 /** /signal page, no sign-in: the patient enters the code and agrees. */
 export const redeemSignalCode = (code: string, language: Lang) =>
-  orTemp(
-    () =>
-      sendJson(
-        "/api/public/signal/redeem",
-        RedeemSignalCodeResponse,
-        { code, consent: true, language },
-        "POST",
-      ),
-    () => tempSignals.redeem(code),
+  sendJson(
+    "/api/public/signal/redeem",
+    RedeemSignalCodeResponse,
+    { code, consent: true, language },
+    "POST",
   );
 
 /** /signal page: one tap on a sign. Returns what the patient is told at once. */
 export const sendPatientSignal = (token: string, kind: SignalKind) =>
-  orTemp(
-    () => sendJson("/api/public/signal", SendSignalResponse, { token, kind }, "POST"),
-    () => tempSignals.send(token, kind),
-  );
+  sendJson("/api/public/signal", SendSignalResponse, { token, kind }, "POST");
+
+/** Numbers for the header badges and the dashboard cards, from the server's dashboard stats. */
+export function useInboxCounts() {
+  const stats = useDashboard().data;
+  return {
+    newSignals: stats?.newSignals?.total ?? 0,
+    escalatedSignals: stats?.newSignals?.escalated ?? 0,
+    incomingReferrals: stats?.incomingReferrals ?? 0,
+  };
+}

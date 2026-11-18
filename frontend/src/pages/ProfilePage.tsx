@@ -10,9 +10,8 @@ export function ProfilePage() {
   const s = useStrings();
   const { lang } = useSession();
   const me = useCurrentUser();
-  const patients = usePatients({});
-  // TEMP(api): `assigned=me` is filtered here until the server supports it (see PatientsPage).
-  const mine = patients.data?.items.filter((p) => p.assignedUser?.id === me?.id);
+  const patients = usePatients({ assigned: "me" });
+  const mine = patients.data?.items;
   if (!me) return null;
 
   const facts: [string, string | null | undefined][] = [

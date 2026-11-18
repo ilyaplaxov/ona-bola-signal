@@ -1,4 +1,10 @@
-import { SignalKind, type SendSignalResponse, type SignalInstruction } from "@ona-bola/shared";
+import {
+  SIGNAL_BUTTON_ORDER,
+  SIGNAL_TEXTS,
+  type SendSignalResponse,
+  type SignalInstruction,
+  type SignalKind,
+} from "@ona-bola/shared";
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 import { useSession, useStrings } from "../app/session";
@@ -47,6 +53,8 @@ export function SignalPage() {
   const [problem, setProblem] = useState<string | null>(null);
   const [answer, setAnswer] = useState<SendSignalResponse | null>(null);
   const page = s.signal.page;
+  // What the patient reads is shared with the Telegram bot: one wording for both.
+  const texts = SIGNAL_TEXTS[lang];
 
   async function link(event: FormEvent) {
     event.preventDefault();
@@ -56,8 +64,10 @@ export function SignalPage() {
       const { token: issued } = await redeemSignalCode(code.replace(/\s/g, "").toUpperCase(), lang);
       saveToken(issued);
       setToken(issued);
-    } catch {
-      setProblem(page.invalidCode);
+      // The code is a one-time secret: once used, take it out of the address bar and history.
+      window.history.replaceState(null, "", window.location.pathname);
+    } catch (error) {
+      setProblem(error instanceof ApiError && error.status === 429 ? texts.tooMany : texts.badCode);
     } finally {
       setBusy(false);
     }
@@ -74,7 +84,9 @@ export function SignalPage() {
         saveToken(null); // the code was withdrawn: ask for a new one
         setToken(null);
       }
-      setProblem(page.sendFailed);
+      setProblem(
+        error instanceof ApiError && error.status === 429 ? texts.tooMany : page.sendFailed,
+      );
     } finally {
       setBusy(false);
     }
@@ -106,7 +118,7 @@ export function SignalPage() {
               className={`rounded-2xl border-2 p-5 text-xl font-semibold leading-snug ${INSTRUCTION_TONE[answer.instruction]}`}
             >
               <p className="mb-2 text-base font-bold">{page.sent} ✓</p>
-              {s.signal.instruction[answer.instruction]}
+              {texts.instructions[answer.instruction]}
             </div>
             <a
               href="tel:103"
@@ -125,7 +137,7 @@ export function SignalPage() {
         ) : token ? (
           <div className="space-y-3">
             <p className="text-lg">{page.choose}</p>
-            {SignalKind.options.map((kind) => (
+            {SIGNAL_BUTTON_ORDER.map((kind) => (
               <button
                 key={kind}
                 type="button"
@@ -134,7 +146,7 @@ export function SignalPage() {
                 onClick={() => void send(kind)}
                 className={`${big} border-2 border-rose-800 bg-white text-left text-rose-950 active:bg-rose-100`}
               >
-                {s.signal.kinds[kind]}
+                {texts.kinds[kind]}
               </button>
             ))}
             {problem ? (
@@ -177,7 +189,7 @@ export function SignalPage() {
                 className="mt-1 h-6 w-6 shrink-0"
               />
               <span>
-                {page.consent} <strong>{page.agree}</strong>
+                {texts.consent} <strong>{texts.agree}</strong>
               </span>
             </label>
             {problem ? (

@@ -39,6 +39,7 @@ function Shell() {
     ["/rules", s.nav.rules],
   ];
   const online = health.data?.db === "up";
+  const aiOn = health.data?.aiEnabled === true;
   const dot = health.isPending ? "bg-slate-300" : online ? "bg-emerald-500" : "bg-red-500";
   const initial = (user?.displayName.replace(/^dr\.?\s+/i, "").charAt(0) || "?").toUpperCase();
 
@@ -88,6 +89,21 @@ function Shell() {
               className={`h-2.5 w-2.5 rounded-full ${dot}`}
               title={online ? "API · DB" : s.common.loadError}
             />
+            <span
+              id="ai-status"
+              data-ai-state={aiOn ? "on" : "off"}
+              title={s.ai.statusTitle}
+              className={`flex items-center gap-1.5 rounded-full border border-violet-300 py-0.5 pr-2.5 pl-0.5 text-xs font-semibold ${
+                aiOn ? "bg-violet-50 text-violet-900" : "bg-white text-violet-700"
+              }`}
+            >
+              <span
+                className={`rounded-full px-2 py-0.5 font-bold text-white ${aiOn ? "bg-violet-700" : "bg-violet-400"}`}
+              >
+                AI
+              </span>
+              {aiOn ? s.ai.statusOn : s.ai.statusOff}
+            </span>
             <LangSwitch />
             <Link
               to="/profile"
@@ -101,7 +117,7 @@ function Shell() {
               <span className="leading-tight">
                 <span className="block font-semibold text-slate-900">{user?.displayName}</span>
                 <span className="block text-xs text-slate-500">
-                  {user ? s.role[user.role] : null}
+                  {user ? [s.role[user.role], user.facility].filter(Boolean).join(" · ") : null}
                 </span>
               </span>
             </Link>

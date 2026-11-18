@@ -1,3 +1,4 @@
+import type { AnalyzeDocumentResponse } from "@ona-bola/shared";
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { useSession, useStrings } from "../app/session";
@@ -15,7 +16,6 @@ import { ZoneBadge } from "../components/ZoneBadge";
 import { formatDate, formatDateTime } from "../i18n/format";
 import { MEASURE_LABELS } from "../i18n/strings";
 import {
-  useAiEnabled,
   useAlerts,
   useDimed,
   useMeasurements,
@@ -40,8 +40,12 @@ export function PatientDetailsPage() {
   const alerts = useAlerts({ patientId: id });
   const dimed = useDimed(id);
   const referrals = useReferrals({ box: "all", patientId: id });
-  const aiEnabled = useAiEnabled();
   const [editing, setEditing] = useState(false);
+  // A draft the AI read from a document: it opens the visit form already filled, never saves it.
+  const [visitDraft, setVisitDraft] = useState<{
+    key: number;
+    draft: AnalyzeDocumentResponse["draft"];
+  } | null>(null);
 
   // visit (submission id) -> DIMED delivery status
   const visitDimed = useMemo(
@@ -186,12 +190,8 @@ export function PatientDetailsPage() {
                 </div>
               </section>
 
-              {aiEnabled ? (
-                <>
-                  <AiPanel patientId={id} assessmentId={p.currentAssessment?.id ?? null} />
-                  <p className="text-sm text-slate-500">{s.engine.legend}</p>
-                </>
-              ) : null}
+              <AiPanel patientId={id} assessmentId={p.currentAssessment?.id ?? null} />
+              <p className="text-sm text-slate-500">{s.engine.legend}</p>
 
               <section className={card}>
                 <h2 className="mb-3 text-lg font-semibold">{s.patient.alerts}</h2>
@@ -274,16 +274,26 @@ export function PatientDetailsPage() {
 
             <section className={`${card} self-start`}>
               <h2 className="mb-2 text-lg font-semibold">{s.form.title}</h2>
-              <MeasurementForm patientId={id} />
+              <MeasurementForm
+                key={visitDraft?.key ?? 0}
+                patientId={id}
+                initialDraft={visitDraft?.draft}
+              />
             </section>
           </div>
         ) : null}
 
-        {tab === "documents" ? <DocumentsPanel patientId={id} /> : null}
-
-        {tab === "referrals" ? (
-          <ReferralsPanel patientId={id} patientReference={p.externalReference} />
+        {tab === "documents" ? (
+          <DocumentsPanel
+            patientId={id}
+            onUseDraft={(draft) => {
+              setVisitDraft((old) => ({ key: (old?.key ?? 0) + 1, draft }));
+              setParams({ tab: "visits" }, { replace: true });
+            }}
+          />
         ) : null}
+
+        {tab === "referrals" ? <ReferralsPanel patientId={id} /> : null}
       </div>
     </div>
   );

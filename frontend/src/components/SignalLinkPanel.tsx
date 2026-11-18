@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { formatDateTime } from "../i18n/format";
-import { tempSignalLinked, useIssueSignalLink } from "../services/queries";
+import { useIssueSignalLink } from "../services/queries";
 
 /** A link with a copy button: the code is the secret, so the doctor reads or pastes it to the patient. */
 function CopyRow({ label, value }: { label: string; value: string }) {
@@ -45,10 +45,8 @@ export function SignalLinkPanel({ patient }: { patient: PatientDetail }) {
   const s = useStrings();
   const { lang } = useSession();
   const canLink = useCan("SIGNAL_LINK");
-  const issue = useIssueSignalLink(patient.id, patient.externalReference);
-  // The server says whether the patient is linked; while the endpoint is missing, the stand-in does.
-  const linked =
-    patient.signalLink?.telegram || patient.signalLink?.web || tempSignalLinked(patient.id);
+  const issue = useIssueSignalLink(patient.id);
+  const linked = Boolean(patient.signalLink?.telegram || patient.signalLink?.web);
   const link = issue.data;
 
   return (

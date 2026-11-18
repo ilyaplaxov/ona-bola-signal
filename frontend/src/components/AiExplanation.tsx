@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useCan } from "../app/auth";
 import { useSession, useStrings } from "../app/session";
 import { formatDateTime } from "../i18n/format";
-import { useExplainRisk } from "../services/queries";
+import { useAiEnabled, useExplainRisk } from "../services/queries";
 import { AiBadge } from "./AiBadge";
 
 /**
@@ -19,7 +19,7 @@ export function AiExplanation({
 }) {
   const s = useStrings();
   const { lang } = useSession();
-  const allowed = useCan("AI_USE");
+  const allowed = useCan("AI_USE") && useAiEnabled();
   const explain = useExplainRisk(patientId);
   const [results, setResults] = useState<Record<string, ExplainRiskResponse>>({});
   const shown = results[`${assessmentId}:${lang}`];
@@ -63,7 +63,7 @@ export function AiExplanation({
         id="ai-explain"
         onClick={run}
         disabled={!allowed || explain.isPending}
-        title={allowed ? undefined : s.ai.noPermission}
+        title={allowed ? undefined : s.ai.offShort}
         className="inline-flex items-center gap-2 rounded-md border border-violet-300 bg-white px-3 py-1.5 text-sm font-semibold text-violet-800 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <AiBadge />

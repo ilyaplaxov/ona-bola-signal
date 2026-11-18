@@ -32,11 +32,17 @@ export function PatientsPage() {
   const me = useCurrentUser();
   const mine = params.get("assigned") === "me";
 
-  const list = usePatients({ q: q || undefined, zone, district });
+  const list = usePatients({
+    q: q || undefined,
+    zone,
+    district,
+    assigned: mine ? "me" : undefined,
+  });
   const everyone = usePatients({});
-  // TEMP(api): the server filter `assigned=me` ships with participant 1; until then (and harmlessly
-  // after) the list is narrowed here, so "My patients" works either way.
-  const items = list.data?.items.filter((p) => !mine || p.assignedUser?.id === me?.id);
+  const items = list.data?.items;
+  // A consultant sees only patients referred to them: an empty list is normal, not an error.
+  const consultantEmpty =
+    me?.role === "SPECIALIST" && Boolean(me.specialty) && !q && !zone && !district && !mine;
   const districts = [...new Set(everyone.data?.items.map((p) => p.district) ?? [])].sort();
 
   const setParam = (key: string, value: string | undefined) => {
@@ -193,7 +199,9 @@ export function PatientsPage() {
           </tbody>
         </table>
         {items && items.length === 0 ? (
-          <p className="p-6 text-center text-sm text-slate-500">{s.patients.empty}</p>
+          <p className="p-6 text-center text-sm text-slate-500">
+            {consultantEmpty ? s.patients.emptyConsultant : s.patients.empty}
+          </p>
         ) : null}
         {list.isPending ? (
           <p className="p-6 text-center text-sm text-slate-500">{s.common.loading}</p>
