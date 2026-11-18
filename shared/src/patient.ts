@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { RiskAssessment } from "./assessment";
 import { IsoDate, IsoDateTime, Uuid } from "./common";
+import { DatingMethod } from "./pregnancy";
 import { RiskFlag, RiskGroup } from "./risk-groups";
 import { UserRef } from "./user";
 import { RiskZone } from "./zones";
@@ -44,6 +45,12 @@ export type PatientSummary = z.infer<typeof PatientSummary>;
 
 export const PatientDetail = PatientSummary.extend({
   dateOfBirth: IsoDate.nullable(),
+  /** LMP-equivalent start of the pregnancy; derived from the due date for records that only have one. */
+  pregnancyStartDate: IsoDate.nullable(),
+  /** How the pregnancy was dated; null for records created with a due date only. */
+  datingMethod: DatingMethod.nullable(),
+  /** Completed days of pregnancy today (weeks = floor(days / 7)); null when undated or not started. */
+  gestationalAgeDays: z.number().int().nonnegative().nullable(),
   riskFactors: RiskFactors,
   /**
    * Risk groups from the anamnesis (antenatal protocol, pp. 33–41), worked out when the patient is

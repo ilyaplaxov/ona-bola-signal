@@ -1,11 +1,13 @@
-import type {
-  MeasurementListResponse,
-  PatientDetail,
-  PatientListQuery,
-  PatientListResponse,
-  PatientSummary,
-  RiskHistoryResponse,
-  UserRole,
+import {
+  gestationalAgeDays,
+  startFromDueDate,
+  type MeasurementListResponse,
+  type PatientDetail,
+  type PatientListQuery,
+  type PatientListResponse,
+  type PatientSummary,
+  type RiskHistoryResponse,
+  type UserRole,
 } from "@ona-bola/shared";
 import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { DbExecutor } from "../db/client";
@@ -130,6 +132,8 @@ export async function getPatient(db: DbExecutor, id: string, now: Date): Promise
     .select({
       ...summaryColumns,
       riskFactors: patients.riskFactors,
+      pregnancyStartDate: patients.pregnancyStartDate,
+      datingMethod: patients.datingMethod,
       createdAt: patients.createdAt,
       updatedAt: patients.updatedAt,
       assessment: riskAssessments,
@@ -149,10 +153,17 @@ export async function getPatient(db: DbExecutor, id: string, now: Date): Promise
     .orderBy(desc(measurements.measuredAt))
     .limit(1);
   const summary = toSummary(row, now);
+  const start =
+    row.pregnancyStartDate ??
+    (row.estimatedDueDate ? startFromDueDate(row.estimatedDueDate) : null);
+  const ageDays = start ? gestationalAgeDays(start, now.toISOString().slice(0, 10)) : null;
 
   return {
     ...summary,
     dateOfBirth: row.dateOfBirth,
+    pregnancyStartDate: start,
+    datingMethod: row.datingMethod ?? null,
+    gestationalAgeDays: ageDays !== null && ageDays >= 0 ? ageDays : null,
     riskFactors: row.riskFactors,
     riskGroups: riskGroupsFor({
       riskFactors: row.riskFactors,

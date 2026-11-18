@@ -30,6 +30,12 @@ export const NoteExtractionOutput = z.object({
 });
 export type NoteExtractionOutput = z.infer<typeof NoteExtractionOutput>;
 
+/** What Claude returns for one turn of POST /api/patients/:id/ai/chat. */
+export const ChatOutput = z.object({
+  answer: z.string(),
+});
+export type ChatOutput = z.infer<typeof ChatOutput>;
+
 /** What Claude returns for POST /api/patients/:id/risk/explain. */
 export const ExplanationOutput = z.object({
   summary: z.string(),

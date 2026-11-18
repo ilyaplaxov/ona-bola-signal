@@ -1,6 +1,7 @@
 import {
   Alert,
   AlertListResponse,
+  AiChatResponse,
   AnalyzeNoteResponse,
   ApiErrorBody,
   AuditListResponse,
@@ -26,6 +27,7 @@ import { DEMO_RULE_SET } from "../src/risk-engine";
 import {
   AiUnavailableError,
   type AiService,
+  type ChatContext,
   type ExplanationFacts,
 } from "../src/services/claude.service";
 import { DEMO_PATIENT_REF, SEED_PATIENTS, SEED_USERS, userId } from "../src/scripts/seed-data";
@@ -406,6 +408,7 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       missingOrUnclear: [],
     };
     const factsSeen: ExplanationFacts[] = [];
+    const chatsSeen: { context: ChatContext; messages: unknown[] }[] = [];
     let failNext: AiUnavailableError | null = null;
     const fakeAi: AiService = {
       model: "fake-claude",
@@ -420,6 +423,10 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       async explainAssessment({ facts }) {
         factsSeen.push(facts);
         return { output: { summary: " Summary. ", keyPoints: ["One", " "] }, model: "fake-claude" };
+      },
+      async chat({ context, messages }) {
+        chatsSeen.push({ context, messages });
+        return { output: { answer: " Javob. " }, model: "fake-claude" };
       },
     };
     const aiApp = createApp({
@@ -512,6 +519,65 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
       expect(factsSeen).toHaveLength(1);
     });
 
+    it("answers a chat question from a de-identified record and audits no text", async () => {
+      const question = "Nega zona sariq? Malika haqida";
+      const res = await request(aiApp)
+        .post(`/api/patients/${demoId}/ai/chat`)
+        .set("x-demo-user-id", nurse)
+        .send({
+          language: "uz",
+          messages: [
+            { role: "user", content: "Salom" },
+            { role: "assistant", content: "Salom, savolingiz?" },
+            { role: "user", content: question },
+          ],
+        });
+      expect(res.status).toBe(200);
+      expect(AiChatResponse.parse(res.body)).toMatchObject({
+        answer: "Javob.",
+        model: "fake-claude",
+      });
+
+      const seen = chatsSeen.at(-1)!;
+      expect(seen.messages).toHaveLength(3);
+      expect(seen.context.measurements.length).toBeGreaterThan(0);
+      const patient = PatientDetail.parse(
+        (await request(aiApp).get(`/api/patients/${demoId}`)).body,
+      );
+      const sent = JSON.stringify(seen.context);
+      for (const personal of [
+        patient.displayName,
+        patient.externalReference,
+        patient.district,
+        patient.facility,
+        patient.dateOfBirth ?? "no-dob",
+      ]) {
+        expect(sent).not.toContain(personal);
+      }
+
+      const audit = AuditListResponse.parse(
+        (await request(aiApp).get(`/api/audit?patientId=${demoId}&limit=1`)).body,
+      );
+      expect(audit.items[0]).toMatchObject({
+        action: "AI_CHAT_ANSWERED",
+        metadata: { turns: 2, questionLength: question.length },
+      });
+      expect(JSON.stringify(audit.items)).not.toContain("Nega zona");
+    });
+
+    it("rejects a chat that does not end with the clinician's question", async () => {
+      const res = await request(aiApp)
+        .post(`/api/patients/${demoId}/ai/chat`)
+        .set("x-demo-user-id", nurse)
+        .send({ messages: [{ role: "assistant", content: "Hi" }] });
+      expect(res.status).toBe(400);
+      const off = await request(app)
+        .post(`/api/patients/${demoId}/ai/chat`)
+        .set("x-demo-user-id", nurse)
+        .send({ messages: [{ role: "user", content: "Hi" }] });
+      expect(off.status).toBe(503);
+    });
+
     it("refuses to explain a patient who was never assessed", async () => {
       const never = PatientListResponse.parse(
         (await request(aiApp).get("/api/patients?zone=NOT_ASSESSED")).body,
@@ -586,6 +652,120 @@ describe.skipIf(!reachable)("API on the seeded test database", () => {
         expect(res.status).toBe(400);
         expect(ApiErrorBody.parse(res.body).error.code).toBe("VALIDATION_FAILED");
       }
+    });
+  });
+
+  describe("pregnancy dating and PATCH /api/patients/:id", () => {
+    const nurse = userId("nurse-chilonzor");
+    const base = {
+      displayName: "Sana Bemor",
+      district: "Chilonzor",
+      facility: "Oilaviy poliklinika 12",
+    };
+    const register = (body: object) =>
+      request(app).post("/api/patients").set("x-demo-user-id", nurse).send(body);
+    const update = (id: string, body: object, actor: string | null = nurse) => {
+      const req = request(app).patch(`/api/patients/${id}`);
+      return (actor ? req.set("x-demo-user-id", actor) : req).send(body);
+    };
+
+    it("dates a pregnancy from the last menstrual period and derives the due date", async () => {
+      // NOW is 2026-11-18; LMP 2026-08-12 is 98 days earlier: 14 weeks 0 days.
+      const res = await register({
+        ...base,
+        externalReference: "OB-DATE-LMP",
+        dating: { method: "LMP", lmpDate: "2026-08-12" },
+      });
+      expect(res.status).toBe(201);
+      expect(PatientDetail.parse(res.body)).toMatchObject({
+        pregnancyStartDate: "2026-08-12",
+        datingMethod: "LMP",
+        estimatedDueDate: "2027-05-19",
+        gestationalAgeDays: 98,
+        gestationalWeek: 14,
+      });
+    });
+
+    it("dates a pregnancy from an ultrasound scan", async () => {
+      // Scan on 2026-11-01 at 10 weeks 3 days: start 73 days earlier, 2026-08-20.
+      const res = await register({
+        ...base,
+        externalReference: "OB-DATE-UTT",
+        dating: { method: "ULTRASOUND", scanDate: "2026-11-01", weeks: 10, days: 3 },
+      });
+      expect(res.status).toBe(201);
+      expect(PatientDetail.parse(res.body)).toMatchObject({
+        pregnancyStartDate: "2026-08-20",
+        datingMethod: "ULTRASOUND",
+        estimatedDueDate: "2027-05-27",
+        gestationalAgeDays: 90,
+      });
+    });
+
+    it("rejects future dates, impossible lengths and dating given twice", async () => {
+      const cases = [
+        { externalReference: "OB-DATE-X1", dating: { method: "LMP", lmpDate: "2026-12-01" } },
+        { externalReference: "OB-DATE-X2", dating: { method: "LMP", lmpDate: "2025-08-01" } },
+        {
+          externalReference: "OB-DATE-X3",
+          dating: { method: "LMP", lmpDate: "2026-08-12" },
+          estimatedDueDate: "2027-05-19",
+        },
+        {
+          externalReference: "OB-DATE-X4",
+          dating: { method: "ULTRASOUND", scanDate: "2026-11-01", weeks: 10, days: 7 },
+        },
+      ];
+      for (const body of cases) {
+        const res = await register({ ...base, ...body });
+        expect(res.status).toBe(400);
+        expect(ApiErrorBody.parse(res.body).error.code).toBe("VALIDATION_FAILED");
+      }
+    });
+
+    it("edits a patient and audits only the names of the changed fields", async () => {
+      const created = PatientDetail.parse(
+        (await register({ ...base, externalReference: "OB-EDIT-01" })).body,
+      );
+      const res = await update(created.id, {
+        displayName: "Yangi Ism",
+        dating: { method: "LMP", lmpDate: "2026-06-03" },
+      });
+      expect(res.status).toBe(200);
+      expect(PatientDetail.parse(res.body)).toMatchObject({
+        displayName: "Yangi Ism",
+        gestationalWeek: 24,
+        currentRiskZone: null,
+      });
+      const audit = AuditListResponse.parse(
+        (await request(app).get(`/api/audit?patientId=${created.id}&limit=1`)).body,
+      );
+      expect(audit.items[0]).toMatchObject({
+        action: "PATIENT_UPDATED",
+        actor: { id: nurse },
+        metadata: { fields: ["displayName", "dating"] },
+      });
+      expect(JSON.stringify(audit.items)).not.toContain("Yangi Ism");
+    });
+
+    it("re-assesses an assessed patient when a risk factor changes", async () => {
+      const ob1 = seedId("patient:OB-0001");
+      const before = PatientDetail.parse((await request(app).get(`/api/patients/${ob1}`)).body);
+      expect(before.currentRiskZone).toBe("GREEN");
+      const res = await update(ob1, {
+        riskFactors: { ...before.riskFactors, previousCesarean: true },
+      });
+      expect(res.status).toBe(200);
+      const after = PatientDetail.parse(res.body);
+      expect(after.currentRiskZone).toBe("YELLOW");
+      expect(after.currentAssessment?.triggeredRuleIds).toContain("DEMO-RF-CESAREAN");
+    });
+
+    it("needs an acting user, a known patient and something to change", async () => {
+      const ob1 = seedId("patient:OB-0001");
+      expect((await update(ob1, { displayName: "X" }, null)).status).toBe(401);
+      expect((await update(seedId("nobody"), { displayName: "X" })).status).toBe(404);
+      expect((await update(ob1, {})).status).toBe(400);
     });
   });
 });

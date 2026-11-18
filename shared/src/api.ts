@@ -5,6 +5,7 @@ import { AuditEntityType, AuditEvent } from "./audit";
 import { IsoDate, IsoDateTime, Language, Uuid } from "./common";
 import { Measurement, MeasurementReading, MeasurementType } from "./measurement";
 import { PatientDetail, PatientSummary, RiskFactors } from "./patient";
+import { PregnancyDating } from "./pregnancy";
 import { RuleSetInfo } from "./ruleset";
 import { User } from "./user";
 import { ElevatedZone, RiskZone, ZoneFilter } from "./zones";
@@ -57,6 +58,16 @@ export const DashboardStats = z.object({
   zoneCounts: z.object({ GREEN: Count, YELLOW: Count, RED: Count, NOT_ASSESSED: Count }),
   pendingAlerts: z.object({ total: Count, YELLOW: Count, RED: Count }),
   recentActivity: z.array(AuditEvent),
+  /** Zone counts and pending alerts per district, for the district overview. Sorted by name. */
+  districts: z
+    .array(
+      z.object({
+        district: z.string().min(1),
+        zoneCounts: z.object({ GREEN: Count, YELLOW: Count, RED: Count, NOT_ASSESSED: Count }),
+        pendingAlerts: Count,
+      }),
+    )
+    .optional(),
 });
 export type DashboardStats = z.infer<typeof DashboardStats>;
 
@@ -79,17 +90,44 @@ export const PatientListResponse = z.object({
 });
 export type PatientListResponse = z.infer<typeof PatientListResponse>;
 
-export const CreatePatientRequest = z.object({
-  externalReference: z.string().trim().min(1).max(32),
-  displayName: z.string().trim().min(1).max(120),
-  dateOfBirth: IsoDate.optional(),
-  district: z.string().trim().min(1).max(80),
-  facility: z.string().trim().min(1).max(120),
-  estimatedDueDate: IsoDate.optional(),
-  riskFactors: RiskFactors.default({}),
-  assignedUserId: Uuid.optional(),
-});
+export const CreatePatientRequest = z
+  .object({
+    externalReference: z.string().trim().min(1).max(32),
+    displayName: z.string().trim().min(1).max(120),
+    dateOfBirth: IsoDate.optional(),
+    district: z.string().trim().min(1).max(80),
+    facility: z.string().trim().min(1).max(120),
+    /** Preferred: how the pregnancy is dated (LMP or ultrasound). The due date is derived from it. */
+    dating: PregnancyDating.optional(),
+    /** Kept for API clients that only know a due date. Not allowed together with `dating`. */
+    estimatedDueDate: IsoDate.optional(),
+    riskFactors: RiskFactors.default({}),
+    assignedUserId: Uuid.optional(),
+  })
+  .refine((b) => !(b.dating && b.estimatedDueDate), {
+    message: "Give either the pregnancy dating or a due date, not both",
+    path: ["estimatedDueDate"],
+  });
 export type CreatePatientRequest = z.infer<typeof CreatePatientRequest>;
+
+/**
+ * PATCH /api/patients/:id. Every field is optional; null clears a clearable field. The reference
+ * never changes (alerts and the audit log refer to it). `riskFactors` replaces the whole object.
+ */
+export const UpdatePatientRequest = z
+  .object({
+    displayName: z.string().trim().min(1).max(120).optional(),
+    dateOfBirth: IsoDate.nullable().optional(),
+    district: z.string().trim().min(1).max(80).optional(),
+    facility: z.string().trim().min(1).max(120).optional(),
+    dating: PregnancyDating.nullable().optional(),
+    riskFactors: RiskFactors.optional(),
+    assignedUserId: Uuid.nullable().optional(),
+  })
+  .refine((b) => Object.values(b).some((v) => v !== undefined), {
+    message: "Nothing to update",
+  });
+export type UpdatePatientRequest = z.infer<typeof UpdatePatientRequest>;
 
 // ---------- Measurements ----------
 
@@ -200,6 +238,36 @@ export const ExplainRiskResponse = z.object({
 });
 export type ExplainRiskResponse = z.infer<typeof ExplainRiskResponse>;
 
+/** One message of the clinician's chat about a patient. The browser keeps the conversation. */
+export const ChatMessage = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().trim().min(1).max(2000),
+});
+export type ChatMessage = z.infer<typeof ChatMessage>;
+
+export const AiChatRequest = z
+  .object({
+    /** The whole conversation so far, oldest first, ending with the clinician's new question. */
+    messages: z.array(ChatMessage).min(1).max(12),
+    language: Language.default("uz"),
+  })
+  .refine((b) => b.messages.every((m, i) => m.role === (i % 2 === 0 ? "user" : "assistant")), {
+    message: "Messages must alternate, starting and ending with the clinician",
+    path: ["messages"],
+  })
+  .refine((b) => b.messages.length % 2 === 1, {
+    message: "The last message must be the clinician's question",
+    path: ["messages"],
+  });
+export type AiChatRequest = z.infer<typeof AiChatRequest>;
+
+export const AiChatResponse = z.object({
+  answer: z.string().min(1),
+  model: z.string().min(1),
+  generatedAt: IsoDateTime,
+});
+export type AiChatResponse = z.infer<typeof AiChatResponse>;
+
 // ---------- Endpoint catalogue: the single list of routes both sides build against ----------
 
 export type HttpMethod = "GET" | "POST" | "PATCH";
@@ -226,6 +294,13 @@ export const endpoints = {
     method: "POST",
     path: "/api/patients",
     body: CreatePatientRequest,
+    response: PatientDetail,
+  },
+  updatePatient: {
+    method: "PATCH",
+    path: "/api/patients/:id",
+    params: IdParams,
+    body: UpdatePatientRequest,
     response: PatientDetail,
   },
   getPatient: {
@@ -266,6 +341,13 @@ export const endpoints = {
     params: IdParams,
     body: ExplainRiskRequest,
     response: ExplainRiskResponse,
+  },
+  aiChat: {
+    method: "POST",
+    path: "/api/patients/:id/ai/chat",
+    params: IdParams,
+    body: AiChatRequest,
+    response: AiChatResponse,
   },
   listAlerts: {
     method: "GET",

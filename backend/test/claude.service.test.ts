@@ -170,6 +170,44 @@ describe("Claude service", () => {
   });
 });
 
+describe("Claude chat", () => {
+  const context = {
+    ageYears: 29,
+    gestationalAgeDays: 224,
+    riskFactors: { parity: 0 },
+    riskGroups: null,
+    assessment: facts,
+    measurements: [],
+  };
+
+  it("sends the conversation as is, with the record in the system prompt", async () => {
+    const { client, requests } = fakeClient({ content: [text({ answer: "Javob" })] });
+    const ai = createClaudeService({ client, model: "m" });
+    const messages = [
+      { role: "user" as const, content: "Nega qizil?" },
+      { role: "assistant" as const, content: "Bosim yuqori." },
+      { role: "user" as const, content: "Qaysi qiymat?" },
+    ];
+    const result = await ai.chat({ context, messages, language: "ru" });
+    expect(result.output.answer).toBe("Javob");
+    expect(requests[0]!.messages).toEqual(messages);
+    const system = requests[0]!.system as string;
+    expect(system).toContain("<record>");
+    expect(system).toContain("Russian");
+    expect(system).toContain("Never assign, change or question a zone");
+    expect(system).toContain("Never name, repeat or add details to medicines");
+    const format = (requests[0]!.output_config as { format: { schema: unknown } }).format;
+    expect(JSON.stringify(format.schema)).not.toMatch(/zone/i);
+  });
+
+  it("treats an empty answer as unusable", async () => {
+    const { client } = fakeClient({ content: [text({ answer: " " })] });
+    const ai = createClaudeService({ client, model: "m" });
+    const messages = [{ role: "user" as const, content: "?" }];
+    expect(await reasonOf(ai.chat({ context, messages, language: "uz" }))).toBe("unparseable");
+  });
+});
+
 describe("aiServiceFromConfig", () => {
   const base = { CLAUDE_MODEL: "claude-opus-5-5", CLAUDE_TIMEOUT_MS: 15_000 };
 

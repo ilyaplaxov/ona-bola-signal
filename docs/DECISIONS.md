@@ -2,6 +2,24 @@
 
 Short log of choices that shape the code, newest first. Add an entry whenever a decision is made or changed.
 
+## 2026-11-18 · Pregnancy dating, patient editing, district overview, AI chat
+
+- **The pregnancy is dated, not the due date typed in.** The form asks for the first day of the last menstrual period, or for an ultrasound scan (date plus gestational age in weeks and days). The server derives the LMP-equivalent start and the due date (+280 days, Naegele) with shared helpers (`shared/src/pregnancy.ts`).
+  - New contract fields: `CreatePatientRequest.dating`, plus `pregnancyStartDate`, `datingMethod` and `gestationalAgeDays` on `PatientDetail`. `estimatedDueDate` stays for API clients, but not together with `dating`.
+  - Migration 0002 adds `patients.pregnancy_start_date` and `dating_method`.
+  - A date in the future, or a start more than 45 weeks ago, is rejected. That is a data-entry bound (no pregnancy lasts 45 weeks), not a clinical rule.
+  - The card shows "32 нед. 3 дн. (по последней менструации)".
+- **`PATCH /api/patients/:id`** edits a patient; the reference never changes. `PATIENT_UPDATED` records the changed field names only. Changing the dating, date of birth or risk factors of an assessed patient re-runs the engine in the same transaction (a re-check, with the normal alert policy), so the zone never lags behind a corrected record. The registration and edit form also takes parity, BMI and 15 common anamnesis flags, so risk groups work for new patients.
+- **Protocol actions on risk-group cards are labelled** "in the protocol (illustrative, the clinician decides)" (brief 6.2 and 17.6: demo rules are not medical recommendations).
+- **District overview** on the dashboard: zone counts and pending alerts per district (`DashboardStats.districts`, optional field), each district linking to the filtered registry. Profile edits now appear in the activity feed.
+- **AI chat for the clinician** (`POST /api/patients/:id/ai/chat`, the card "AI assistant").
+  - The conversation lives in the browser; at most the last 12 messages are sent, alternating and ending with the clinician's question.
+  - Claude gets a de-identified record in the system prompt: age, gestational age, risk factors and groups, the engine's facts, and the measurement history. No name, reference, district, facility or date of birth (a test checks this).
+  - The prompt forbids setting or questioning a zone, diagnosing, and naming medicines, doses or durations. It also forbids adding facts that are not in the record, and quoting codes.
+  - The first live run on Haiku 5.5 added "until 38 weeks" to aspirin, which was not in the record. The prompt was tightened, and the answer now refers to the risk-group card and the protocol instead.
+  - Audit `AI_CHAT_ANSWERED` records model, language and sizes, never the text.
+- **Git:** first commit made on 18 Nov; the team asked for no Claude co-author trailer in commits. Hackathon materials in the repository root (organiser slides, problem list, pitch template, a copy of the brief) are left out of git.
+
 ## 2026-11-18 · Russian interface
 
 - **A third interface language, Russian** (UZ / RU / EN buttons; Uzbek stays the default). Every dictionary in `frontend/src/i18n/strings.ts` has a `ru` entry, and TypeScript fails the build if one is missing. Dates read "18 ноября 2026", protocol pages "с. 34".

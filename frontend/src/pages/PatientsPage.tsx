@@ -2,7 +2,7 @@ import { ZoneFilter } from "@ona-bola/shared";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useSession, useStrings } from "../app/session";
-import { RegisterPatientForm } from "../components/RegisterPatientForm";
+import { PatientForm } from "../components/PatientForm";
 import { ZoneBadge } from "../components/ZoneBadge";
 import { formatDateTime } from "../i18n/format";
 import { usePatients } from "../services/queries";
@@ -69,10 +69,7 @@ export function PatientsPage() {
       </div>
 
       {registering ? (
-        <RegisterPatientForm
-          known={everyone.data?.items ?? []}
-          onClose={() => setRegistering(false)}
-        />
+        <PatientForm known={everyone.data?.items ?? []} onClose={() => setRegistering(false)} />
       ) : null}
 
       <div className="flex flex-wrap gap-2">

@@ -60,7 +60,10 @@ export function RiskGroups({ groups }: { groups: RiskGroup[] | null | undefined 
                   {s.riskGroups.factors}:{" "}
                   {g.matched.map((f) => riskFactorLabel(f, lang)).join(", ")}
                 </div>
-                <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-sm text-slate-800">
+                <p className="mt-1.5 text-xs font-medium text-slate-500">
+                  {s.riskGroups.actionsLabel}
+                </p>
+                <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-sm text-slate-800">
                   {g.actions.map((a) => (
                     <li key={a}>{s.riskGroups.action[a]}</li>
                   ))}

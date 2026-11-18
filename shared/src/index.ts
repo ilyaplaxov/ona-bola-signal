@@ -4,6 +4,7 @@ export * from "./zones";
 export * from "./user";
 export * from "./measurement";
 export * from "./assessment";
+export * from "./pregnancy";
 export * from "./patient";
 export * from "./alert";
 export * from "./audit";

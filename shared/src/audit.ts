@@ -12,6 +12,7 @@ export const AuditAction = z.enum([
   "RULE_SET_LOADED",
   "AI_NOTE_ANALYZED",
   "AI_EXPLANATION_GENERATED",
+  "AI_CHAT_ANSWERED",
 ]);
 export type AuditAction = z.infer<typeof AuditAction>;
 

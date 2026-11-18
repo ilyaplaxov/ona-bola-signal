@@ -26,9 +26,47 @@ export async function getDashboardStats(db: DbExecutor): Promise<DashboardStats>
   // The feed shows what people did and what needs them; routine re-checks would drown it.
   const recentActivity = await listAudit(db, {
     limit: 10,
-    actions: ["MEASUREMENTS_ADDED", "ALERT_CREATED", "ALERT_ACKNOWLEDGED", "PATIENT_CREATED"],
+    actions: [
+      "MEASUREMENTS_ADDED",
+      "ALERT_CREATED",
+      "ALERT_ACKNOWLEDGED",
+      "PATIENT_CREATED",
+      "PATIENT_UPDATED",
+    ],
   });
-  return { zoneCounts, pendingAlerts, recentActivity };
+  const districtRows = await db
+    .select({
+      district: patients.district,
+      zone: patients.currentRiskZone,
+      count: sql`count(*)`.mapWith(Number),
+    })
+    .from(patients)
+    .groupBy(patients.district, patients.currentRiskZone);
+  const districtAlertRows = await db
+    .select({ district: patients.district, count: sql`count(*)`.mapWith(Number) })
+    .from(alerts)
+    .innerJoin(patients, eq(patients.id, alerts.patientId))
+    .where(eq(alerts.status, "PENDING"))
+    .groupBy(patients.district);
+  const byDistrict = new Map<string, NonNullable<DashboardStats["districts"]>[number]>();
+  const entry = (district: string) => {
+    let e = byDistrict.get(district);
+    if (!e) {
+      e = {
+        district,
+        zoneCounts: { GREEN: 0, YELLOW: 0, RED: 0, NOT_ASSESSED: 0 },
+        pendingAlerts: 0,
+      };
+      byDistrict.set(district, e);
+    }
+    return e;
+  };
+  for (const row of districtRows)
+    entry(row.district).zoneCounts[row.zone ?? "NOT_ASSESSED"] = row.count;
+  for (const row of districtAlertRows) entry(row.district).pendingAlerts = row.count;
+  const districts = [...byDistrict.values()].sort((a, b) => a.district.localeCompare(b.district));
+
+  return { zoneCounts, pendingAlerts, recentActivity, districts };
 }
 
 /** Demo actors for the role switcher, grouped by role. */

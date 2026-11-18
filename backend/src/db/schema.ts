@@ -56,6 +56,10 @@ export const patients = pgTable(
     facility: text("facility").notNull(),
     /** The gestational week is derived from this when read, so it never goes stale. */
     estimatedDueDate: date("estimated_due_date"),
+    /** LMP-equivalent start of the pregnancy, when it was dated at registration (migration 0002). */
+    pregnancyStartDate: date("pregnancy_start_date"),
+    /** "LMP" or "ULTRASOUND"; null for records created with a due date only. */
+    datingMethod: text("dating_method").$type<"LMP" | "ULTRASOUND">(),
     riskFactors: jsonb("risk_factors").$type<RiskFactors>().notNull().default({}),
     assignedUserId: uuid("assigned_user_id").references(() => users.id, { onDelete: "set null" }),
     /** Cached copy of the latest assessment's zone; null means "not assessed". */

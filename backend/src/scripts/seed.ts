@@ -111,6 +111,9 @@ async function seedPatient(
     assignedUserId: userId(district.doctor),
     dateOfBirth: isoDay(now, -(p.ageYears * 365 + Math.floor(p.ageYears / 4) + 40)),
     estimatedDueDate: isoDay(now, PREGNANCY_DAYS - p.week * 7 - 3),
+    // Dated by the last menstrual period, like most registrations; the due date follows from it.
+    pregnancyStartDate: isoDay(now, -(p.week * 7 + 3)),
+    datingMethod: "LMP",
     riskFactors: riskFactorsFor(p),
     createdAt: registeredAt,
     updatedAt: registeredAt,

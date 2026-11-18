@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { useSession, useStrings } from "../app/session";
+import { AiChat } from "../components/AiChat";
 import { AiExplanation } from "../components/AiExplanation";
 import { AlertList } from "../components/AlertList";
 import { MeasurementForm } from "../components/MeasurementForm";
 import { MeasurementHistory } from "../components/MeasurementHistory";
+import { PatientForm } from "../components/PatientForm";
 import { RiskExplanation } from "../components/RiskExplanation";
 import { RiskGroupChips, RiskGroups } from "../components/RiskGroups";
 import { ZoneBadge } from "../components/ZoneBadge";
@@ -28,6 +31,7 @@ export function PatientDetailsPage() {
   const risk = useRiskHistory(id);
   const alerts = useAlerts({ patientId: id });
   const aiEnabled = useAiEnabled();
+  const [editing, setEditing] = useState(false);
 
   if (patient.isPending) return <p className="text-slate-500">{s.common.loading}</p>;
   if (patient.isError) return <p className="text-red-700">{s.common.loadError}</p>;
@@ -55,9 +59,17 @@ export function PatientDetailsPage() {
             <div>
               <dt className="inline text-slate-500">{s.patient.week}: </dt>
               <dd className="inline font-medium">
-                {p.gestationalWeek === null
-                  ? s.common.dash
-                  : `${p.gestationalWeek} ${s.common.weeks}`}
+                {p.gestationalAgeDays !== null
+                  ? `${Math.floor(p.gestationalAgeDays / 7)} ${s.register.weeksShort} ${p.gestationalAgeDays % 7} ${s.register.daysShort}`
+                  : p.gestationalWeek === null
+                    ? s.common.dash
+                    : `${p.gestationalWeek} ${s.common.weeks}`}
+                {p.datingMethod ? (
+                  <span className="font-normal text-slate-500">
+                    {" "}
+                    ({s.register.datedBy[p.datingMethod]})
+                  </span>
+                ) : null}
               </dd>
             </div>
             <div>
@@ -73,8 +85,22 @@ export function PatientDetailsPage() {
           </dl>
           <RiskGroupChips groups={p.riskGroups} />
         </div>
-        <ZoneBadge zone={p.currentRiskZone} incomplete={p.hasDataWarnings} large />
+        <div className="flex flex-col items-end gap-3">
+          <ZoneBadge zone={p.currentRiskZone} incomplete={p.hasDataWarnings} large />
+          {editing ? null : (
+            <button
+              type="button"
+              id="patient-edit"
+              onClick={() => setEditing(true)}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {s.register.edit}
+            </button>
+          )}
+        </div>
       </header>
+
+      {editing ? <PatientForm patient={p} known={[]} onClose={() => setEditing(false)} /> : null}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
@@ -91,6 +117,8 @@ export function PatientDetailsPage() {
               <p className="text-sm text-slate-600">{s.patient.notAssessed}</p>
             )}
           </section>
+
+          {aiEnabled ? <AiChat key={id} patientId={id} /> : null}
 
           <section className={card}>
             <h2 className="mb-4 text-lg font-semibold">{s.patient.history}</h2>

@@ -19,7 +19,7 @@ export function DashboardPage() {
 
   if (stats.isPending) return <p className="text-slate-500">{s.common.loading}</p>;
   if (stats.isError) return <p className="text-red-700">{s.common.loadError}</p>;
-  const { zoneCounts, pendingAlerts, recentActivity } = stats.data;
+  const { zoneCounts, pendingAlerts, recentActivity, districts = [] } = stats.data;
 
   return (
     <div className="space-y-6">
@@ -41,6 +41,55 @@ export function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {districts.length > 0 ? (
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h2 className="font-semibold">{s.dashboard.byDistrict}</h2>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm tabular-nums">
+              <thead className="text-left text-xs text-slate-500">
+                <tr>
+                  <th className="py-1.5 pr-4 font-medium">{s.dashboard.district}</th>
+                  {ZONE_CARDS.map(({ zone }) => (
+                    <th key={zone} className="px-3 py-1.5 font-medium">
+                      <ZoneBadge zone={zone === "NOT_ASSESSED" ? null : zone} />
+                    </th>
+                  ))}
+                  <th className="px-3 py-1.5 font-medium">{s.dashboard.pendingShort}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {districts.map((d) => (
+                  <tr key={d.district}>
+                    <td className="py-2 pr-4">
+                      <Link
+                        to={`/patients?district=${encodeURIComponent(d.district)}`}
+                        className="font-medium text-slate-900 hover:text-rose-800"
+                      >
+                        {d.district}
+                      </Link>
+                    </td>
+                    {ZONE_CARDS.map(({ zone }) => (
+                      <td key={zone} className="px-3 py-2">
+                        {d.zoneCounts[zone] || <span className="text-slate-300">0</span>}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2">
+                      {d.pendingAlerts > 0 ? (
+                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                          {d.pendingAlerts}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">0</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-xl border border-slate-200 bg-white p-5">

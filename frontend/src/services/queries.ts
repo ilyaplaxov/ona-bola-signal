@@ -1,4 +1,5 @@
 import {
+  AiChatResponse,
   Alert,
   AlertListResponse,
   AnalyzeNoteResponse,
@@ -12,9 +13,11 @@ import {
   RuleSetInfo,
   SubmitMeasurementsResponse,
   UserListResponse,
+  type AiChatRequest,
   type AlertStatus,
   type AnalyzeNoteRequest,
   type CreatePatientRequest,
+  type UpdatePatientRequest,
   type ExplainRiskRequest,
   type SubmitMeasurementsRequest,
   type ZoneFilter,
@@ -127,6 +130,16 @@ export function useCreatePatient() {
   });
 }
 
+/** Edits a patient; the server re-assesses her when the dating or risk factors change. */
+export function useUpdatePatient(patientId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdatePatientRequest) =>
+      sendJson(`/api/patients/${patientId}`, PatientDetail, body, "PATCH"),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
 /** Claude reads a note into a draft for the form. Nothing is saved, so nothing refreshes. */
 export const useAnalyzeNote = (patientId: string) =>
   useMutation({
@@ -143,3 +156,10 @@ export const useExplainRisk = (patientId: string) =>
 
 /** true when the server has the Claude features turned on. */
 export const useAiEnabled = (): boolean => useHealth().data?.aiEnabled === true;
+
+/** One chat turn about a patient; the conversation lives in the browser. */
+export const useAiChat = (patientId: string) =>
+  useMutation({
+    mutationFn: (body: AiChatRequest) =>
+      sendJson(`/api/patients/${patientId}/ai/chat`, AiChatResponse, body, "POST"),
+  });

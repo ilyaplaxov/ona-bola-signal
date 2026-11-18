@@ -32,7 +32,7 @@ export function createApp(deps: AppDeps): express.Express {
   const ai = deps.ai ?? null;
   app.use("/api", healthRouter({ pingDb: deps.pingDb, aiEnabled: ai !== null }));
   app.use("/api", demoActor(deps.db));
-  app.use("/api", patientsRouter({ db: deps.db, clock }));
+  app.use("/api", patientsRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", metaRouter({ db: deps.db, ruleSet: deps.ruleSet }));
   app.use("/api", workflowRouter({ db: deps.db, ruleSet: deps.ruleSet, clock }));
   app.use("/api", aiRouter({ db: deps.db, ai, clock }));

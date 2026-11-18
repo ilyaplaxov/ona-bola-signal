@@ -1,6 +1,7 @@
 import {
   CreatePatientRequest,
   IdParams,
+  UpdatePatientRequest,
   MeasurementListResponse,
   PatientDetail,
   PatientListQuery,
@@ -11,7 +12,9 @@ import { Router } from "express";
 import type { Database } from "../db/client";
 import { requireActor } from "../middleware/demo-actor";
 import { parseInput, sendJson } from "../middleware/validate";
-import { createPatient } from "../services/patient-registration.service";
+import { deliverAlerts } from "../services/notification";
+import { createPatient, updatePatient } from "../services/patient-registration.service";
+import type { RuleSet } from "../risk-engine";
 import {
   getPatient,
   getRiskHistory,
@@ -20,7 +23,11 @@ import {
 } from "../services/patient.service";
 
 /** Registry endpoints (brief section 12): list, register, and read one patient's record. */
-export function patientsRouter(deps: { db: Database; clock: () => Date }): Router {
+export function patientsRouter(deps: {
+  db: Database;
+  ruleSet: RuleSet;
+  clock: () => Date;
+}): Router {
   const router = Router();
 
   router.get("/patients", async (req, res) => {
@@ -32,6 +39,20 @@ export function patientsRouter(deps: { db: Database; clock: () => Date }): Route
     const actor = requireActor(res);
     const request = parseInput(CreatePatientRequest, req.body);
     sendJson(res, PatientDetail, await createPatient(deps.db, request, actor, deps.clock()), 201);
+  });
+
+  router.patch("/patients/:id", async (req, res) => {
+    const actor = requireActor(res);
+    const { id } = parseInput(IdParams, req.params);
+    const request = parseInput(UpdatePatientRequest, req.body);
+    const outcome = await updatePatient(deps.db, deps.ruleSet, {
+      patientId: id,
+      request,
+      actor,
+      now: deps.clock(),
+    });
+    await deliverAlerts(outcome.newAlerts);
+    sendJson(res, PatientDetail, outcome.patient);
   });
 
   router.get("/patients/:id", async (req, res) => {

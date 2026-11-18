@@ -61,7 +61,7 @@ test("a nurse's visit turns the zone red and the specialist acknowledges the ale
   await page.getByRole("button", { name: "Saqlash va baholash" }).click();
   await expect(page.getByText("Mutaxassisga ogohlantirish yuborildi.")).toBeVisible();
   await expect(header.getByText("Qizil")).toBeVisible();
-  await expect(page.getByText("Nega bu zona")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nega bu zona" })).toBeVisible();
   // Each reason cites the protocol page its value comes from.
   await expect(
     page.getByText("Manba: «Антенатальный уход» milliy protokoli, 34-bet").first(),
@@ -95,7 +95,9 @@ test("a new synthetic patient can be registered and starts unassessed", async ({
   await page.locator("#r-name").fill("Sinov Bemor");
   await page.locator("#r-district").fill("Chilonzor");
   await page.locator("#r-facility").fill("Oilaviy poliklinika 12");
-  await page.locator("#r-due").fill("2027-04-20");
+  await page.locator("#r-dob").fill("1998-05-04");
+  await page.locator("#r-lmp").fill("2026-08-12");
+  await expect(page.locator("#r-dating-preview")).toBeVisible();
   await page.locator("#r-previousCesarean").selectOption("yes");
   await shot(page, "06-registration-form");
   await page.getByRole("button", { name: /yxatga olish$/ }).click();
@@ -103,6 +105,15 @@ test("a new synthetic patient can be registered and starts unassessed", async ({
   await expect(page).toHaveURL(/\/patients\/[0-9a-f-]{36}$/);
   const header = page.locator("header").filter({ hasText: "OB-E2E-01" });
   await expect(header.getByText("Baholanmagan")).toBeVisible();
+  await expect(header.getByText(/oxirgi hayz boʻyicha/)).toBeVisible();
+
+  await page.locator("#patient-edit").click();
+  await page.locator("#r-parity").fill("0");
+  const notRecorded = page.getByText(/xavf guruhlari baholanmagan/);
+  await expect(notRecorded).toBeVisible();
+  await page.locator("#patient-form-save").click();
+  await expect(page.locator("#patient-edit")).toBeVisible();
+  await expect(notRecorded).toHaveCount(0);
 });
 
 test("the interface switches to English", async ({ page }) => {

@@ -1,4 +1,6 @@
 import {
+  AiChatRequest,
+  AiChatResponse,
   AnalyzeNoteRequest,
   AnalyzeNoteResponse,
   ExplainRiskRequest,
@@ -15,10 +17,11 @@ import { recordAudit } from "../services/audit.service";
 import {
   AiUnavailableError,
   type AiService,
+  type ChatContext,
   type ExplanationFacts,
 } from "../services/claude.service";
 import { toNoteDraft } from "../services/note-draft";
-import { assertPatientExists, getPatient } from "../services/patient.service";
+import { assertPatientExists, getPatient, listMeasurements } from "../services/patient.service";
 
 /** Explanations kept in memory. An assessment never changes, so its explanation can be reused. */
 const EXPLANATION_CACHE_SIZE = 200;
@@ -153,6 +156,55 @@ export function aiRouter(deps: { db: Database; ai: AiService | null; clock: () =
     if (explanations.size >= EXPLANATION_CACHE_SIZE) explanations.clear();
     explanations.set(key, response);
     sendJson(res, ExplainRiskResponse, response);
+  });
+
+  router.post("/patients/:id/ai/chat", async (req, res) => {
+    const actor = requireActor(res);
+    const { id } = parseInput(IdParams, req.params);
+    const body = parseInput(AiChatRequest, req.body);
+    const ai = requireAi();
+    const now = deps.clock();
+    const patient = await getPatient(deps.db, id, now);
+    const history = await listMeasurements(deps.db, id);
+
+    // De-identified: no name, reference, district, facility or date of birth.
+    const context: ChatContext = {
+      ageYears: patient.ageYears,
+      gestationalAgeDays: patient.gestationalAgeDays,
+      riskFactors: patient.riskFactors,
+      riskGroups: patient.riskGroups ?? null,
+      assessment: patient.currentAssessment
+        ? toExplanationFacts(patient.currentAssessment, patient.gestationalWeek)
+        : null,
+      measurements: history.items.map((m) => ({
+        measuredAt: m.measuredAt,
+        reading: { ...m.reading },
+      })),
+    };
+    const result = await callAi("Chat", () =>
+      ai.chat({ context, messages: body.messages, language: body.language }),
+    );
+
+    await recordAudit(deps.db, {
+      actorUserId: actor.id,
+      action: "AI_CHAT_ANSWERED",
+      entityType: "PATIENT",
+      entityId: id,
+      patientId: id,
+      // Never the question or the answer: only the model, language and size of the exchange.
+      metadata: {
+        model: result.model,
+        language: body.language,
+        turns: Math.ceil(body.messages.length / 2),
+        questionLength: body.messages.at(-1)?.content.length ?? 0,
+      },
+      createdAt: now,
+    });
+    sendJson(res, AiChatResponse, {
+      answer: result.output.answer.trim(),
+      model: result.model,
+      generatedAt: now.toISOString(),
+    });
   });
 
   return router;
